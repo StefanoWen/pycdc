@@ -1114,12 +1114,9 @@ PycRef<ASTNode> BuildFromCode::build()
 			int offs = operand;
 			if (mod->verCompare(3, 10) >= 0)
 				offs *= sizeof(uint16_t); // // BPO-27129
-			if (opcode == Pyc::JUMP_IF_FALSE_A
-				|| opcode == Pyc::JUMP_IF_TRUE_A
-				|| opcode == Pyc::POP_JUMP_FORWARD_IF_TRUE_A
-				|| opcode == Pyc::POP_JUMP_FORWARD_IF_FALSE_A
-				|| opcode == Pyc::JUMP_IF_TRUE_OR_POP_A
-				|| opcode == Pyc::JUMP_IF_FALSE_OR_POP_A) {
+			if ((opcode == Pyc::JUMP_IF_FALSE_A
+				|| opcode == Pyc::JUMP_IF_TRUE_A)
+				|| mod->verCompare(3, 11) >= 0) {
 				/* Offset is relative in these cases */
 				offs += pos;
 			}
@@ -1642,9 +1639,10 @@ PycRef<ASTNode> BuildFromCode::build()
 			ASTTuple::value_t annot_tuple_values;
 
 			if (mod->verCompare(3, 6) >= 0) {
+				// annotations
 				if (operand & 0x4) {
 					if (mod->verCompare(3, 10) >= 0) {
-						// annotations (a tuple)
+						// (ASTTuple)
 						ASTTuple::value_t curr_annot_tuple_values = stack.top().cast<ASTTuple>()->values();
 						stack.pop();
 
@@ -1659,7 +1657,7 @@ PycRef<ASTNode> BuildFromCode::build()
 						}
 					}
 					else {
-						// annotations (a const map)
+						// (ASTConstMap)
 						PycRef<ASTConstMap> annot_const_map = stack.top().cast<ASTConstMap>();
 						stack.pop();
 
@@ -1681,10 +1679,19 @@ PycRef<ASTNode> BuildFromCode::build()
 
 				// positional-only and positional-or-keyword parameters (a tuple)
 				if (operand & 0x1) {
-					PycSimpleSequence::value_t defaultsTupleValues = stack.top().cast<ASTObject>()->object().cast<PycTuple>()->values();
-					stack.pop();
-					for (PycSimpleSequence::value_t::const_iterator it = defaultsTupleValues.begin(); it != defaultsTupleValues.end(); it++) {
-						defaultsValues.push_back(new ASTObject(*it));
+					if (mod->verCompare(3, 10) >= 0) {
+						// (ASTTuple)
+						ASTTuple::value_t defaultsTupleValues = stack.top().cast<ASTTuple>()->values();
+						stack.pop();
+						defaultsValues.assign(defaultsTupleValues.begin(), defaultsTupleValues.end());
+					}
+					else {
+						// (PycTuple)
+						PycSimpleSequence::value_t defaultsTupleValues = stack.top().cast<ASTObject>()->object().cast<PycTuple>()->values();
+						stack.pop();
+						for (PycSimpleSequence::value_t::const_iterator it = defaultsTupleValues.begin(); it != defaultsTupleValues.end(); it++) {
+							defaultsValues.push_back(new ASTObject(*it));
+						}
 					}
 				}
 			}
@@ -2091,6 +2098,7 @@ PycRef<ASTNode> BuildFromCode::build()
 		break;
 		case Pyc::RERAISE_A:
 		{
+			// if opernad is non zero, then ignore this opcode
 			if (!operand) {
 				this->end_finally();
 			}
@@ -2132,6 +2140,10 @@ PycRef<ASTNode> BuildFromCode::build()
 		case Pyc::SETUP_FINALLY_A:
 		{
 			if (mod->verCompare(3, 8) >= 0) {
+				int offs = operand;
+				if (mod->verCompare(3, 10) >= 0)
+					offs *= sizeof(uint16_t); // // BPO-27129
+
 				if (need_try) {
 					need_try = false;
 
