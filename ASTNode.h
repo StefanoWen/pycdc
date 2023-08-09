@@ -540,14 +540,18 @@ private:
 
 class ASTRaise : public ASTNode {
 public:
-	typedef std::list<PycRef<ASTNode>> param_t;
+	ASTRaise(PycRef<ASTNode> exception) : ASTNode(NODE_RAISE),
+		m_exception(std::move(exception)) {}
+	ASTRaise(PycRef<ASTNode> exception, PycRef<ASTNode> exceptionCause) : ASTNode(NODE_RAISE),
+		m_exception(std::move(exception)), m_exceptionCause(std::move(exceptionCause)){}
 
-	ASTRaise(param_t params) : ASTNode(NODE_RAISE), m_params(std::move(params)) { }
-
-	const param_t& params() const { return m_params; }
+	const PycRef<ASTNode>& exception() const { return m_exception; }
+	const PycRef<ASTNode>& exceptionCause() const { return m_exceptionCause; }
+	bool hasExceptionCause() const { return m_exceptionCause != nullptr; }
 
 private:
-	param_t m_params;
+	PycRef<ASTNode> m_exception;
+	PycRef<ASTNode> m_exceptionCause;
 };
 
 

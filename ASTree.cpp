@@ -518,12 +518,10 @@ void ASTree::print_src(PycRef<ASTNode> node)
 	{
 		PycRef<ASTRaise> raise = node.cast<ASTRaise>();
 		pyc_output << "raise ";
-		bool first = true;
-		for (const auto& param : raise->params()) {
-			if (!first)
-				pyc_output << ", ";
-			print_src(param);
-			first = false;
+		print_src(raise->exception());
+		if (raise->hasExceptionCause()) {
+			pyc_output << " from ";
+			print_src(raise->exceptionCause());
 		}
 	}
 	break;

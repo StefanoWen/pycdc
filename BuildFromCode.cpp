@@ -2166,12 +2166,21 @@ void BuildFromCode::switchOpcode()
 	break;
 	case Pyc::RAISE_VARARGS_A:
 	{
-		ASTRaise::param_t paramList;
-		for (int i = 0; i < operand; i++) {
-			paramList.push_front(stack.top());
+		PycRef<ASTNode> raise;
+		if (operand == 1) {
+			PycRef<ASTNode> exception = stack.top();
 			stack.pop();
+			raise = new ASTRaise(exception);
 		}
-		curblock->append(new ASTRaise(paramList));
+		else if (operand == 2) {
+			PycRef<ASTNode> exceptionCause = stack.top();
+			stack.pop();
+			PycRef<ASTNode> exception = stack.top();
+			stack.pop();
+			raise = new ASTRaise(exception, exceptionCause);
+		}
+
+		curblock->append(raise);
 
 		/*
 		if ((curblock->blktype() == ASTBlock::BLK_IF
