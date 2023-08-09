@@ -2173,10 +2173,12 @@ void BuildFromCode::switchOpcode()
 		}
 		curblock->append(new ASTRaise(paramList));
 
+		/*
 		if ((curblock->blktype() == ASTBlock::BLK_IF
 			|| curblock->blktype() == ASTBlock::BLK_ELSE)
 			&& stack_hist.size()
-			&& (mod->verCompare(2, 6) >= 0)) {
+			&& (mod->verCompare(2, 6) >= 0))
+		{
 			stack = stack_hist.top();
 			stack_hist.pop();
 
@@ -2187,6 +2189,7 @@ void BuildFromCode::switchOpcode()
 
 			bc_next(source, mod, opcode, operand, pos);
 		}
+		*/
 	}
 	break;
 	case Pyc::RETURN_VALUE:
@@ -2195,6 +2198,7 @@ void BuildFromCode::switchOpcode()
 		stack.pop();
 		curblock->append(new ASTReturn(value));
 
+		/*
 		if ((curblock->blktype() == ASTBlock::BLK_IF
 			|| curblock->blktype() == ASTBlock::BLK_ELSE)
 			&& stack_hist.size()
@@ -2209,6 +2213,7 @@ void BuildFromCode::switchOpcode()
 
 			bc_next(source, mod, opcode, operand, pos);
 		}
+		*/
 	}
 	break;
 	case Pyc::ROT_TWO:
