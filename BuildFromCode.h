@@ -5,9 +5,18 @@
 #include <cstdint>
 #include <stdexcept>
 #include <algorithm>
+#include <exception>
 #include "FastStack.h"
 #include "pyc_numeric.h"
 #include "bytecode.h"
+
+class UnsupportedOpcodeException : public std::exception
+{
+	const char* what() const throw ()
+	{
+		return "Error: Unsupported Opcode";
+	}
+};
 
 class BuildFromCode
 {
@@ -22,6 +31,7 @@ private:
 	void CheckIfExpr();
 	void binary_or_inplace();
 	void checker();
+	void switchOpcode();
 	void begin_finally();
 	void end_finally();
 
@@ -48,6 +58,7 @@ private:
 
 	bool check_if_finally_begins_now;
 	bool is_except_begins_now;
+	int comprehension_counter;
 };
 
 #endif
