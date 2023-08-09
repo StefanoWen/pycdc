@@ -115,6 +115,7 @@ PycRef<ASTNode> BuildFromCode::build()
 		bc_next(source, mod, opcode, operand, pos);
 
 		if (need_try && opcode != Pyc::SETUP_EXCEPT_A) {
+			// in case there is only finally and no except
 			need_try = false;
 
 			/* Store the current stack for the except/finally statement(s) */
@@ -533,12 +534,17 @@ PycRef<ASTNode> BuildFromCode::build()
 		break;
 		case Pyc::CALL_FUNCTION_VAR_A:
 		{
-			PycRef<ASTNode> var = stack.top();
-			stack.pop();
+			PycRef<ASTNode> var;
+			if (mod->verCompare(3, 5) < 0) {
+				var = stack.top();
+				stack.pop();
+			}
+
 			int kwparams = (operand & 0xFF00) >> 8;
 			int pparams = (operand & 0xFF);
 			ASTCall::kwparam_t kwparamList;
 			ASTCall::pparam_t pparamList;
+
 			for (int i = 0; i < kwparams; i++) {
 				PycRef<ASTNode> val = stack.top();
 				stack.pop();
@@ -546,6 +552,12 @@ PycRef<ASTNode> BuildFromCode::build()
 				stack.pop();
 				kwparamList.push_front(std::make_pair(key, val));
 			}
+
+			if (mod->verCompare(3, 5) >= 0) {
+				var = stack.top();
+				stack.pop();
+			}
+
 			for (int i = 0; i < pparams; i++) {
 				pparamList.push_front(stack.top());
 				stack.pop();
@@ -560,19 +572,38 @@ PycRef<ASTNode> BuildFromCode::build()
 		break;
 		case Pyc::CALL_FUNCTION_KW_A:
 		{
-			PycRef<ASTNode> kw = stack.top();
-			stack.pop();
-			int kwparams = (operand & 0xFF00) >> 8;
-			int pparams = (operand & 0xFF);
+			PycRef<ASTNode> kw;
 			ASTCall::kwparam_t kwparamList;
 			ASTCall::pparam_t pparamList;
-			for (int i = 0; i < kwparams; i++) {
-				PycRef<ASTNode> val = stack.top();
+			int pparams;
+
+			if (mod->verCompare(3, 6) >= 0) {
+				PycSimpleSequence::value_t kw_keys = stack.top().cast<ASTObject>()->object().cast<PycTuple>()->values();
 				stack.pop();
-				PycRef<ASTNode> key = stack.top();
-				stack.pop();
-				kwparamList.push_front(std::make_pair(key, val));
+				int kwparams = (int)kw_keys.size();
+				pparams = operand - kwparams;
+
+				for (int i = 0; i < kwparams; i++) {
+					PycRef<ASTNode> value = stack.top();
+					stack.pop();
+					kwparamList.push_front(std::make_pair(new ASTObject(kw_keys[(size_t)kwparams - 1 - (size_t)i]), value));
+				}
 			}
+			else {
+				kw = stack.top();
+				stack.pop();
+				int kwparams = (operand & 0xFF00) >> 8;
+				pparams = (operand & 0xFF);
+
+				for (int i = 0; i < kwparams; i++) {
+					PycRef<ASTNode> val = stack.top();
+					stack.pop();
+					PycRef<ASTNode> key = stack.top();
+					stack.pop();
+					kwparamList.push_front(std::make_pair(key, val));
+				}
+			}
+
 			for (int i = 0; i < pparams; i++) {
 				pparamList.push_front(stack.top());
 				stack.pop();
@@ -581,20 +612,28 @@ PycRef<ASTNode> BuildFromCode::build()
 			stack.pop();
 
 			PycRef<ASTNode> call = new ASTCall(func, pparamList, kwparamList);
-			call.cast<ASTCall>()->setKW(kw);
+			if (mod->verCompare(3, 6) < 0) {
+				call.cast<ASTCall>()->setKW(kw);
+			}
 			stack.push(call);
 		}
 		break;
 		case Pyc::CALL_FUNCTION_VAR_KW_A:
 		{
+			PycRef<ASTNode> var;
 			PycRef<ASTNode> kw = stack.top();
 			stack.pop();
-			PycRef<ASTNode> var = stack.top();
-			stack.pop();
+
+			if (mod->verCompare(3, 5) < 0) {
+				var = stack.top();
+				stack.pop();
+			}
+
 			int kwparams = (operand & 0xFF00) >> 8;
 			int pparams = (operand & 0xFF);
 			ASTCall::kwparam_t kwparamList;
 			ASTCall::pparam_t pparamList;
+
 			for (int i = 0; i < kwparams; i++) {
 				PycRef<ASTNode> val = stack.top();
 				stack.pop();
@@ -602,10 +641,17 @@ PycRef<ASTNode> BuildFromCode::build()
 				stack.pop();
 				kwparamList.push_front(std::make_pair(key, val));
 			}
+
+			if (mod->verCompare(3, 5) >= 0) {
+				var = stack.top();
+				stack.pop();
+			}
+
 			for (int i = 0; i < pparams; i++) {
 				pparamList.push_front(stack.top());
 				stack.pop();
 			}
+
 			PycRef<ASTNode> func = stack.top();
 			stack.pop();
 
@@ -1593,8 +1639,16 @@ PycRef<ASTNode> BuildFromCode::build()
 				func_code_obj = stack.top();
 				stack.pop();
 			}
-
-			if (opcode == Pyc::MAKE_CLOSURE_A) {
+			
+			bool is_closure;
+			if (mod->verCompare(3, 6) >= 0) {
+				is_closure = operand & 0x8;
+			}
+			else {
+				is_closure = opcode == Pyc::MAKE_CLOSURE_A;
+			}
+			if (is_closure) {
+				// its a closure function
 				// pop the tuple of the LOAD_CLOSURE's, dont need it
 				stack.pop();
 			}
@@ -1602,44 +1656,93 @@ PycRef<ASTNode> BuildFromCode::build()
 			ASTFunction::defarg_t defaultsValues, kwDefArgs;
 			ASTTuple::value_t annot_tuple_values;
 
-			const int defaultsCount = operand & 0xFF;
-			const int kwDefCount = (operand >> 8) & 0xFF;
-			int annotCount = (operand >> 16) & 0x7FFF;
+			if (mod->verCompare(3, 6) >= 0) {
+				if (operand & 0x4) {
+					if (mod->verCompare(3, 10) >= 0) {
+						// annotations (a tuple)
+						ASTTuple::value_t curr_annot_tuple_values = stack.top().cast<ASTTuple>()->values();
+						stack.pop();
 
-			if (annotCount) {
-				// annotations count also counting the tuple (so decrement 1)
-				annotCount--;
+						for (size_t i = 0; i < curr_annot_tuple_values.size(); i++)
+						{
+							if (curr_annot_tuple_values[i]->type() == ASTNode::NODE_NAME) {
+								annot_tuple_values.push_back(curr_annot_tuple_values[i].cast<ASTNode>());
+							}
+							else {
+								annot_tuple_values.push_back(new ASTName(curr_annot_tuple_values[i].cast<ASTObject>()->object().cast<PycString>()));
+							}
+						}
+					}
+					else {
+						// annotations (a const map)
+						PycRef<ASTConstMap> annot_const_map = stack.top().cast<ASTConstMap>();
+						stack.pop();
 
-				// TOS will be a tuple of the parameters names that has the annotations.
-				// Annotations values will start at TOS - 1.
-				PycSimpleSequence::value_t paramsAnnotNames = stack.top().cast<ASTObject>()->object().cast<PycTuple>()->values();
-				stack.pop();
+						PycSimpleSequence::value_t annot_const_map_keys = annot_const_map->keys().cast<ASTObject>()->object().cast<PycTuple>()->values();
+						ASTConstMap::values_t annot_const_map_values = annot_const_map->values();
+						for (size_t i = 0; i < annot_const_map_values.size(); i++) {
+							annot_tuple_values.push_back(new ASTName(annot_const_map_keys[i].cast<PycString>()));
+							annot_tuple_values.push_back(annot_const_map_values[i]);
+						}
+					}
+				}
 
-				ASTConstMap::values_t annotValues;
-				annotValues.reserve(annotCount);
-				for (int i = 0; i < annotCount; ++i) {
-					PycRef<ASTNode> annot_value = stack.top();
+				// keyword-only parameters (a const map)
+				if (operand & 0x2) {
+					ASTConstMap::values_t kwdefArgsValues = stack.top().cast<ASTConstMap>()->values();
 					stack.pop();
-					annotValues.push_back(annot_value);
+					kwDefArgs.assign(kwdefArgsValues.begin(), kwdefArgsValues.end());
 				}
-				// reverse values order
-				std::reverse(annotValues.begin(), annotValues.end());
 
-				for (size_t i = 0; i < annotValues.size(); i++) {
-					annot_tuple_values.push_back(new ASTName(paramsAnnotNames[i].cast<PycString>()));
-					annot_tuple_values.push_back(annotValues[i]);
+				// positional-only and positional-or-keyword parameters (a tuple)
+				if (operand & 0x1) {
+					PycSimpleSequence::value_t defaultsTupleValues = stack.top().cast<ASTObject>()->object().cast<PycTuple>()->values();
+					stack.pop();
+					for (PycSimpleSequence::value_t::const_iterator it = defaultsTupleValues.begin(); it != defaultsTupleValues.end(); it++) {
+						defaultsValues.push_back(new ASTObject(*it));
+					}
 				}
 			}
-			for (int i = 0; i < defaultsCount; ++i) {
-				defaultsValues.push_front(stack.top());
-				stack.pop();
-			}
-			for (int i = 0; i < kwDefCount; ++i) {
-				kwDefArgs.push_front(stack.top());
-				stack.pop();
-				/* pop the parameter name, we already have the parameters names and
-				* all we need it in this pyc object */
-				stack.pop();
+			else {
+				const int defaultsCount = operand & 0xFF;
+				const int kwDefCount = (operand >> 8) & 0xFF;
+				int annotCount = (operand >> 16) & 0x7FFF;
+
+				if (annotCount) {
+					// annotations count also counting the tuple (so decrement 1)
+					annotCount--;
+
+					// TOS will be a tuple of the parameters names that has the annotations.
+					// Annotations values will start at TOS - 1.
+					PycSimpleSequence::value_t paramsAnnotNames = stack.top().cast<ASTObject>()->object().cast<PycTuple>()->values();
+					stack.pop();
+
+					ASTConstMap::values_t annotValues;
+					annotValues.reserve(annotCount);
+					for (int i = 0; i < annotCount; ++i) {
+						PycRef<ASTNode> annot_value = stack.top();
+						stack.pop();
+						annotValues.push_back(annot_value);
+					}
+					// reverse values order
+					std::reverse(annotValues.begin(), annotValues.end());
+
+					for (size_t i = 0; i < annotValues.size(); i++) {
+						annot_tuple_values.push_back(new ASTName(paramsAnnotNames[i].cast<PycString>()));
+						annot_tuple_values.push_back(annotValues[i]);
+					}
+				}
+				for (int i = 0; i < defaultsCount; ++i) {
+					defaultsValues.push_front(stack.top());
+					stack.pop();
+				}
+				for (int i = 0; i < kwDefCount; ++i) {
+					kwDefArgs.push_front(stack.top());
+					stack.pop();
+					/* pop the parameter name, we already have the parameters names and
+					* all we need it in this pyc object */
+					stack.pop();
+				}
 			}
 
 			// checking if this function is a lambda of list comprehension
