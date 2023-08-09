@@ -1,3 +1,6 @@
+#ifndef BYTECODE_H
+#define BYTECODE_H
+
 #include "pyc_code.h"
 #include "pyc_module.h"
 #include "data.h"
@@ -40,3 +43,5 @@ void print_const(std::ostream& pyc_output, PycRef<PycObject> obj, PycModule* mod
 void bc_next(PycBuffer& source, PycModule* mod, int& opcode, int& operand, int& pos);
 void bc_disasm(std::ostream& pyc_output, PycRef<PycCode> code, PycModule* mod,
                int indent, unsigned flags);
+
+#endif

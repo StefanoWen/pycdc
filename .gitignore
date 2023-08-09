@@ -19,6 +19,7 @@ CMakeFiles/
 pycdc.sln
 *.vcxproj
 *.vcxproj.filters
+bytes/*.cpp
 tests/MyTests/*/*.pyc
 tests/MyTests/versions
 tests/*/*.bytecode

@@ -18,7 +18,7 @@ public:
         NODE_COMPREHENSION, NODE_LOADBUILDCLASS, NODE_AWAITABLE,
         NODE_FORMATTEDVALUE, NODE_JOINEDSTR, NODE_CONST_MAP,
         NODE_ANNOTATED_VAR, NODE_CHAINSTORE, NODE_TERNARY,
-        NODE_KW_NAMES_MAP,
+        NODE_KW_NAMES_MAP, NODE_MAP_UNPACK,
 
         // Empty node types
         NODE_LOCALS,
@@ -249,18 +249,27 @@ class ASTFunction : public ASTNode {
 public:
     typedef std::list<PycRef<ASTNode>> defarg_t;
 
-    ASTFunction(PycRef<ASTNode> code, defarg_t defArgs, defarg_t kwDefArgs)
+	ASTFunction(PycRef<ASTNode> code, defarg_t defArgs, defarg_t kwDefArgs)
+		: ASTNode(NODE_FUNCTION), m_code(std::move(code)),
+		m_annotations_tuple(), m_defargs(std::move(defArgs)),
+		m_kwdefargs(std::move(kwDefArgs)), m_is_comp_lambda(false) {}
+    ASTFunction(PycRef<ASTNode> code, PycRef<ASTNode> annotations_tuple, defarg_t defArgs, defarg_t kwDefArgs, bool is_comp_lambda)
         : ASTNode(NODE_FUNCTION), m_code(std::move(code)),
-          m_defargs(std::move(defArgs)), m_kwdefargs(std::move(kwDefArgs)) { }
+		  m_annotations_tuple(annotations_tuple), m_defargs(std::move(defArgs)),
+		  m_kwdefargs(std::move(kwDefArgs)), m_is_comp_lambda(is_comp_lambda) {}
 
     PycRef<ASTNode> code() const { return m_code; }
+    PycRef<ASTNode> annotations() const { return m_annotations_tuple; }
     const defarg_t& defargs() const { return m_defargs; }
     const defarg_t& kwdefargs() const { return m_kwdefargs; }
+	bool is_comp_lambda() const { return m_is_comp_lambda; }
 
 private:
     PycRef<ASTNode> m_code;
+	PycRef<ASTNode> m_annotations_tuple;
     defarg_t m_defargs;
     defarg_t m_kwdefargs;
+	bool m_is_comp_lambda;
 };
 
 
@@ -338,17 +347,20 @@ public:
 
     ASTTuple(value_t values)
         : ASTNode(NODE_TUPLE), m_values(std::move(values)),
-          m_requireParens(true) { }
+          m_requireParens(true), m_isUnpack(false) { }
 
     const value_t& values() const { return m_values; }
     void add(PycRef<ASTNode> name) { m_values.emplace_back(std::move(name)); }
 
     void setRequireParens(bool require) { m_requireParens = require; }
+    void setIsUnpack(bool isUnpack) { m_isUnpack = isUnpack; }
     bool requireParens() const { return m_requireParens; }
+    bool isUnpack() const { return m_isUnpack; }
 
 private:
     value_t m_values;
     bool m_requireParens;
+	bool m_isUnpack;
 };
 
 
@@ -357,12 +369,17 @@ public:
     typedef std::list<PycRef<ASTNode>> value_t;
 
     ASTList(value_t values)
-        : ASTNode(NODE_LIST), m_values(std::move(values)) { }
+        : ASTNode(NODE_LIST), m_values(std::move(values)),
+	    m_isUnpack(false) { }
+
+	void setIsUnpack(bool isUnpack) { m_isUnpack = isUnpack; }
 
     const value_t& values() const { return m_values; }
+    bool isUnpack() const { return m_isUnpack; }
 
 private:
     value_t m_values;
+	bool m_isUnpack;
 };
 
 class ASTSet : public ASTNode {
@@ -370,12 +387,17 @@ public:
     typedef std::deque<PycRef<ASTNode>> value_t;
 
     ASTSet(value_t values)
-        : ASTNode(NODE_SET), m_values(std::move(values)) { }
+        : ASTNode(NODE_SET), m_values(std::move(values)),
+	      m_isUnpack(false) { }
+
+	void setIsUnpack(bool isUnpack) { m_isUnpack = isUnpack; }
 
     const value_t& values() const { return m_values; }
+    bool isUnpack() const { return m_isUnpack; }
 
 private:
     value_t m_values;
+	bool m_isUnpack;
 };
 
 class ASTMap : public ASTNode {
@@ -384,15 +406,33 @@ public:
 
     ASTMap() : ASTNode(NODE_MAP) { }
 
-    void add(PycRef<ASTNode> key, PycRef<ASTNode> value)
+	void addBack(PycRef<ASTNode> key, PycRef<ASTNode> value)
+	{
+		m_values.emplace_back(std::move(key), std::move(value));
+	}
+    void addFront(PycRef<ASTNode> key, PycRef<ASTNode> value)
     {
-        m_values.emplace_back(std::move(key), std::move(value));
+        m_values.emplace_front(std::move(key), std::move(value));
     }
 
     const map_t& values() const { return m_values; }
 
 private:
     map_t m_values;
+};
+
+class ASTMapUnpack : public ASTNode {
+public:
+	typedef std::list<PycRef<ASTNode>> value_t;
+
+	ASTMapUnpack() : ASTNode(NODE_MAP_UNPACK) { }
+
+	void add(PycRef<ASTNode> name) { m_values.emplace_front(std::move(name)); }
+
+	const value_t& values() const { return m_values; }
+
+private:
+	value_t m_values;
 };
 
 class ASTKwNamesMap : public ASTNode {
@@ -416,11 +456,12 @@ class ASTConstMap : public ASTNode {
 public:
     typedef std::vector<PycRef<ASTNode>> values_t;
 
-    ASTConstMap(PycRef<ASTNode> keys, const values_t& values)
+    ASTConstMap(PycRef<ASTNode> keys, values_t values)
         : ASTNode(NODE_CONST_MAP), m_keys(std::move(keys)), m_values(std::move(values)) { }
 
     const PycRef<ASTNode>& keys() const { return m_keys; }
     const values_t& values() const { return m_values; }
+	size_t size() const { return m_values.size(); }
 
 private:
     PycRef<ASTNode> m_keys;
@@ -533,7 +574,7 @@ public:
 
     enum BlkType {
         BLK_MAIN, BLK_IF, BLK_ELSE, BLK_ELIF, BLK_TRY,
-        BLK_CONTAINER, BLK_EXCEPT, BLK_FINALLY,
+        BLK_CONTAINER, BLK_EXCEPT, BLK_FINALLY, BLK_DUPLICATED_FINALLY, 
         BLK_WHILE, BLK_FOR, BLK_WITH, BLK_ASYNCFOR
     };
 
@@ -618,6 +659,7 @@ public:
     int except() const { return m_except; }
 
     void setExcept(int except) { m_except = except; }
+	void setFinally(int finally) { m_finally = finally; }
 
 private:
     int m_finally;

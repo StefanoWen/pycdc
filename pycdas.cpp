@@ -146,9 +146,17 @@ void output_object(PycRef<PycObject> obj, PycModule* mod, int indent,
                 output_object(codeObj->lnTable().cast<PycObject>(), mod, indent + 2, flags, pyc_output);
             }
 
-            if (mod->verCompare(3, 11) >= 0 && (flags & Pyc::DISASM_PYCODE_VERBOSE) != 0) {
+            if (mod->verCompare(3, 11) >= 0) {
                 iputs(pyc_output, indent + 1, "[Exception Table]\n");
-                output_object(codeObj->exceptTable().cast<PycObject>(), mod, indent + 2, flags, pyc_output);
+				for (size_t i = 0; i < codeObj->exceptTableEntries().size(); i++)
+				{
+					iprintf(pyc_output, indent + 2, "%d to %d -> %d [%d]%s\n",
+						codeObj->exceptTableEntries()[i].start,
+						codeObj->exceptTableEntries()[i].length - 2,
+						codeObj->exceptTableEntries()[i].end,
+						codeObj->exceptTableEntries()[i].depth,
+						(codeObj->exceptTableEntries()[i].lasti) ? " lasti" : "");
+				}
             }
         }
         break;

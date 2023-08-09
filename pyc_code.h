@@ -5,6 +5,21 @@
 #include "pyc_string.h"
 #include <vector>
 
+typedef struct ExceptTableEntry {
+	unsigned int start;
+	unsigned int length;
+	unsigned int end;
+	unsigned int depth;
+	bool lasti;
+} ExceptTableEntry;
+
+class EndOfIteratorException : public std::exception {
+public:
+	const char* what() const noexcept {
+		return "end of iterator";
+	}
+};
+
 class PycData;
 class PycModule;
 
@@ -56,6 +71,7 @@ public:
     int firstLine() const { return m_firstLine; }
     PycRef<PycString> lnTable() const { return m_lnTable; }
     PycRef<PycString> exceptTable() const { return m_exceptTable; }
+	std::vector<ExceptTableEntry> exceptTableEntries() const { return m_exceptTableEntries; }
 
     PycRef<PycObject> getConst(int idx) const
     {
@@ -97,7 +113,12 @@ private:
     int m_firstLine;
     PycRef<PycString> m_lnTable;
     PycRef<PycString> m_exceptTable;
+	std::vector<ExceptTableEntry> m_exceptTableEntries;
     globals_t m_globalsUsed; /* Global vars used in this code */
+
+	unsigned char nextByte(std::string::const_iterator& it, const std::string::iterator& end) const;
+	unsigned int parseVarInt(std::string::const_iterator& it, const std::string::iterator& end) const;
+	void initExceptTableEntries();
 };
 
 #endif

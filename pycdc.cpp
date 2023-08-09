@@ -94,7 +94,8 @@ int main(int argc, char* argv[])
                     mod.majorVer(), mod.minorVer(),
                     (mod.majorVer() < 3 && mod.isUnicode()) ? " Unicode" : "");
     try {
-        decompyle(mod.code(), &mod, *pyc_output);
+		ASTree astree(&mod, *pyc_output);
+		astree.decompyle(mod.code());
     } catch (std::exception& ex) {
         fprintf(stderr, "Error decompyling %s: %s\n", infile, ex.what());
         return 1;

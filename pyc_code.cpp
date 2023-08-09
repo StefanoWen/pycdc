@@ -83,9 +83,14 @@ void PycCode::load(PycData* stream, PycModule* mod)
         m_lnTable = new PycString;
 
     if (mod->verCompare(3, 11) >= 0)
+    {
         m_exceptTable = LoadObject(stream, mod).cast<PycString>();
+        this->initExceptTableEntries();
+    }
     else
+    {
         m_exceptTable = new PycString;
+    }
 }
 
 PycRef<PycString> PycCode::getCellVar(PycModule* mod, int idx) const
@@ -96,4 +101,47 @@ PycRef<PycString> PycCode::getCellVar(PycModule* mod, int idx) const
     return (idx >= m_cellVars->size())
         ? m_freeVars->get(idx - m_cellVars->size()).cast<PycString>()
         : m_cellVars->get(idx).cast<PycString>();
+}
+
+unsigned char PycCode::nextByte(std::string::const_iterator& it, const std::string::iterator& end) const
+{
+    if (it == end) {
+        throw EndOfIteratorException();
+    }
+    return *it++;
+}
+
+unsigned int PycCode::parseVarInt(std::string::const_iterator& it, const std::string::iterator& end) const {
+    unsigned char b = nextByte(it, end);
+    unsigned int val = b & 63;
+    while (b & 64) {
+        val <<= 6;
+        b = nextByte(it, end);
+        val |= b & 63;
+    }
+    return val;
+}
+
+void PycCode::initExceptTableEntries() {
+    std::string exceptTableStr = std::string(this->exceptTable()->strValue());
+    std::vector<ExceptTableEntry> exceptTableEntries;
+    std::string::const_iterator it = exceptTableStr.begin();
+    try {
+        while (true) {
+            unsigned int start = parseVarInt(it, exceptTableStr.end()) * 2;
+            unsigned int length = parseVarInt(it, exceptTableStr.end()) * 2;
+            unsigned int target = parseVarInt(it, exceptTableStr.end()) * 2;
+            unsigned int dl = parseVarInt(it, exceptTableStr.end());
+            exceptTableEntries.push_back(ExceptTableEntry{
+                start,
+                (unsigned int)(start + length),
+                target,
+                (unsigned int)(dl >> 1),
+                (bool)(dl & 1)
+                });
+        }
+    }
+    catch (const EndOfIteratorException&) {
+        this->m_exceptTableEntries = exceptTableEntries;
+    }
 }
