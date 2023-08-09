@@ -9,9 +9,4 @@ except ZeroDivisionError : <EOL>
 print ( 'start except' ) <EOL>
 print ( 'end except' ) <EOL>
 <OUTDENT>
-finally : <EOL>
-<INDENT>
-print ( 'start finally' ) <EOL>
-print ( 'end finally' ) <EOL>
-<OUTDENT>
 print ( 'end' ) <EOL>

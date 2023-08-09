@@ -1,0 +1,17 @@
+print ( 'start' ) <EOL>
+try : <EOL>
+<INDENT>
+print ( 'start try' ) <EOL>
+print ( 'end try' ) <EOL>
+<OUTDENT>
+except TypeError : <EOL>
+<INDENT>
+print ( 'start except1' ) <EOL>
+print ( 'end except1' ) <EOL>
+<OUTDENT>
+except ZeroDivisionError : <EOL>
+<INDENT>
+print ( 'start except2' ) <EOL>
+print ( 'end except2' ) <EOL>
+<OUTDENT>
+print ( 'end' ) <EOL>

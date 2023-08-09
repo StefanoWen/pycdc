@@ -4,14 +4,14 @@ try : <EOL>
 print ( 'start try' ) <EOL>
 print ( 'end try' ) <EOL>
 <OUTDENT>
-except ZeroDivisionError : <EOL>
+except : <EOL>
 <INDENT>
 print ( 'start except' ) <EOL>
 print ( 'end except' ) <EOL>
 <OUTDENT>
-finally : <EOL>
+else : <EOL>
 <INDENT>
-print ( 'start finally' ) <EOL>
-print ( 'end finally' ) <EOL>
+print ( 'start else' ) <EOL>
+print ( 'end else' ) <EOL>
 <OUTDENT>
 print ( 'end' ) <EOL>

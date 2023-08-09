@@ -1,0 +1,1 @@
+l = [char for char in 'hello']

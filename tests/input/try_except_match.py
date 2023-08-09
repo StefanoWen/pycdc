@@ -6,8 +6,5 @@ try:
 except ZeroDivisionError:
 	print('start except')
 	print('end except')
-finally:
-	print('start finally')
-	print('end finally')
 
 print('end')
