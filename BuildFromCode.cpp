@@ -1783,14 +1783,9 @@ void BuildFromCode::switchOpcode()
 				If the low bit of "NAMEI" (operand) is set,
 				then a NULL is pushed to the stack before the global variable. */
 				stack.push(nullptr);
-				/*
-				and thats because for some reason for example 3 global functions: input, int, print.
-				it tries to load: 1, 3, 5
-				all though we have only 3 names, so thats should be: (1-1)/2 = 0, (3-1)/2 = 1, (5-1)/2 = 2
-				i dont know why, maybe because of the null push, but thats a FIX for now.
-				*/
-				operand = (int)((operand - 1) / 2);
 			}
+			// Special case for Python 3.11+
+			operand >>= 1;
 		}
 		stack.push(new ASTName(code->getName(operand)));
 		break;
