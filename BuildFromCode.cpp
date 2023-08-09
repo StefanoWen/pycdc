@@ -1806,6 +1806,13 @@ void BuildFromCode::switchOpcode()
 	case Pyc::LOAD_NAME_A:
 		stack.push(new ASTName(code->getName(operand)));
 		break;
+	case Pyc::LOAD_ASSERTION_ERROR:
+	{
+		PycRef<PycString> assertionErrorString = new PycString();
+		assertionErrorString->setValue("AssertionError");
+		stack.push(new ASTName(assertionErrorString));
+	}
+	break;
 	case Pyc::MAKE_CLOSURE_A:
 	case Pyc::MAKE_FUNCTION_A:
 	{
