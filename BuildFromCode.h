@@ -21,6 +21,9 @@ private:
 	PycRef<ASTNode> StackPopTop();
 	void CheckIfExpr();
 	void binary_or_inplace();
+	void checker();
+	void begin_finally();
+	void end_finally();
 
 	PycRef<PycCode> code;
 	PycModule* mod;
@@ -42,6 +45,9 @@ private:
 	/* Use this to determine if an error occurred (and therefore, if we should
 	* avoid cleaning the output tree) */
 	bool cleanBuild;
+
+	bool check_if_finally_begins_now;
+	bool is_except_begins_now;
 };
 
 #endif
