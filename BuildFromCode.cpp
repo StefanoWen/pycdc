@@ -122,7 +122,7 @@ PycRef<ASTNode> BuildFromCode::build()
 		try {
 			this->switchOpcode();
 		}
-		catch (UnsupportedOpcodeException) {
+		catch (UnsupportedOpcodeException&) {
 			return new ASTNodeList(defblock->nodes());
 		}
 
@@ -362,6 +362,7 @@ void BuildFromCode::switchOpcode()
 		operand = operand & 0xff;
 		// continue to BUILD_MAP_UNPACK (below)
 	}
+	/* Fall through */
 	case Pyc::BUILD_MAP_UNPACK_A:
 	{
 		auto map = new ASTMapUnpack;
