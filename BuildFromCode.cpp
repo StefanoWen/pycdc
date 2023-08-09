@@ -98,6 +98,132 @@ void BuildFromCode::binary_or_inplace()
 	stack.push(new ASTBinary(left, right, op));
 }
 
+void BuildFromCode::exceptions_checker()
+{
+	if (curblock->blktype() == ASTBlock::BLK_CONTAINER
+		&& curblock.cast<ASTContainerBlock>()->getFinally() == curpos)
+	{
+		/* Add the finally block */
+		stack_hist.push(stack);
+
+		PycRef<ASTBlock> finally_block = new ASTBlock(ASTBlock::BLK_FINALLY, 0, true);
+		blocks.push(finally_block);
+		curblock = blocks.top();
+	}
+	else if (curblock->blktype() == ASTBlock::BLK_EXCEPT && curblock->end() == curpos)
+	{
+		curblock->setBlktype(ASTBlock::BLK_ELSE);
+
+		stack = stack_hist.top();
+		stack_hist.pop();
+
+		// pop else to container
+		blocks.pop();
+		if (curblock->size()) 
+		{
+			blocks.top()->append(curblock.cast<ASTNode>());
+		}
+		curblock = blocks.top();
+
+		// if has no finally, then pop the container
+		if (!curblock.cast<ASTContainerBlock>()->hasFinally()) 
+		{
+			blocks.pop();
+			blocks.top()->append(curblock.cast<ASTNode>());
+			curblock = blocks.top();
+		}
+	}
+
+	/*
+	if (check_if_finally_begins_now) {
+		check_if_finally_begins_now = false;
+
+		// if opcode is not JUMP_FORWARD then the finally block begins now
+		//  (if its JUMP_FORWARD, then its except block beginning) 
+		if (opcode == Pyc::JUMP_FORWARD_A) {
+			is_except_begins_now = true;
+		}
+		else {
+			this->begin_finally();
+		}
+	}
+	*/
+
+	if (need_try && (
+		// in case its only one of the two (except / finally)
+		(mod->verCompare(3, 8) >= 0 && opcode != Pyc::SETUP_FINALLY_A) ||
+		// in case its only finally and no except
+		(mod->verCompare(3, 8) < 0 && opcode != Pyc::SETUP_EXCEPT_A)))
+	{
+
+		need_try = false;
+
+		/* Store the current stack for the except/finally statement(s) */
+		stack_hist.push(stack);
+		PycRef<ASTBlock> tryblock = new ASTBlock(ASTBlock::BLK_TRY, curblock->end(), true);
+		blocks.push(tryblock);
+		curblock = blocks.top();
+	}
+}
+
+void BuildFromCode::checker()
+{
+	if (comprehension_counter == 2 && opcode != Pyc::PRECALL_A) {
+		if (opcode == Pyc::PRECALL_A) {
+			comprehension_counter = 1;
+		}
+		else {
+			// reset counter to 3 
+			// because next opcode is not precall
+			comprehension_counter = 3;
+		}
+	}
+
+	if (else_pop
+		&& opcode != Pyc::JUMP_FORWARD_A
+		&& opcode != Pyc::JUMP_IF_FALSE_A
+		&& opcode != Pyc::JUMP_IF_TRUE_A
+		&& opcode != Pyc::JUMP_IF_FALSE_OR_POP_A
+		&& opcode != Pyc::JUMP_IF_TRUE_OR_POP_A
+		&& opcode != Pyc::POP_JUMP_IF_FALSE_A
+		&& opcode != Pyc::POP_JUMP_IF_TRUE_A
+		&& opcode != Pyc::JUMP_IF_NOT_EXC_MATCH_A
+		&& opcode != Pyc::POP_JUMP_FORWARD_IF_FALSE_A
+		&& opcode != Pyc::POP_JUMP_FORWARD_IF_TRUE_A
+		&& opcode != Pyc::POP_BLOCK) {
+		else_pop = false;
+
+		PycRef<ASTBlock> prev = curblock;
+		while (prev->end() < pos
+			&& prev->blktype() != ASTBlock::BLK_MAIN)
+		{
+			if (prev->blktype() != ASTBlock::BLK_CONTAINER)
+			{
+				if (prev->end() == 0) {
+					break;
+				}
+
+				/* We want to keep the stack the same, but we need to pop
+				 * a level off the history. */
+				 //stack = stack_hist.top();
+				if (!stack_hist.empty())
+					stack_hist.pop();
+			}
+			blocks.pop();
+
+			if (blocks.empty())
+				break;
+
+			curblock = blocks.top();
+			curblock->append(prev.cast<ASTNode>());
+
+			prev = curblock;
+
+			CheckIfExpr();
+		}
+	}
+}
+
 PycRef<ASTNode> BuildFromCode::build()
 {
 	while (!source.atEof()) {
@@ -117,6 +243,7 @@ PycRef<ASTNode> BuildFromCode::build()
 		curpos = pos;
 		bc_next(source, mod, opcode, operand, pos);
 
+		this->exceptions_checker();
 		this->checker();
 		
 		try {
@@ -153,95 +280,6 @@ PycRef<ASTNode> BuildFromCode::build()
 
 	cleanBuild = true;
 	return new ASTNodeList(defblock->nodes());
-}
-
-void BuildFromCode::checker()
-{
-	if (comprehension_counter == 2 && opcode != Pyc::PRECALL_A) {
-		if (opcode == Pyc::PRECALL_A) {
-			comprehension_counter = 1;
-		}
-		else {
-			// reset counter to 3 
-			// because next opcode is not precall
-			comprehension_counter = 3;
-		}
-	}
-
-	if (check_if_finally_begins_now) {
-		check_if_finally_begins_now = false;
-
-		/* if opcode is not JUMP_FORWARD then the finally block begins now
-		*  (if its JUMP_FORWARD, then its except block beginning) */
-		if (opcode == Pyc::JUMP_FORWARD_A) {
-			is_except_begins_now = true;
-		}
-		else {
-			this->begin_finally();
-		}
-	}
-
-	int setup_except_or_finally_opcode;
-	if (mod->verCompare(3, 8) >= 0) {
-		// its only one of the two (except / finally), add try block
-		setup_except_or_finally_opcode = Pyc::SETUP_FINALLY_A;
-	}
-	else {
-		// in case there is only finally and no except
-		setup_except_or_finally_opcode = Pyc::SETUP_EXCEPT_A;
-	}
-
-	if (need_try && opcode != setup_except_or_finally_opcode) {
-		
-		need_try = false;
-
-		/* Store the current stack for the except/finally statement(s) */
-		stack_hist.push(stack);
-		PycRef<ASTBlock> tryblock = new ASTBlock(ASTBlock::BLK_TRY, curblock->end(), true);
-		blocks.push(tryblock);
-		curblock = blocks.top();
-	}
-	else if (else_pop
-		&& opcode != Pyc::JUMP_FORWARD_A
-		&& opcode != Pyc::JUMP_IF_FALSE_A
-		&& opcode != Pyc::JUMP_IF_TRUE_A
-		&& opcode != Pyc::JUMP_IF_FALSE_OR_POP_A
-		&& opcode != Pyc::JUMP_IF_TRUE_OR_POP_A
-		&& opcode != Pyc::POP_JUMP_IF_FALSE_A
-		&& opcode != Pyc::POP_JUMP_IF_TRUE_A
-		&& opcode != Pyc::JUMP_IF_NOT_EXC_MATCH_A
-		&& opcode != Pyc::POP_JUMP_FORWARD_IF_FALSE_A
-		&& opcode != Pyc::POP_JUMP_FORWARD_IF_TRUE_A
-		&& opcode != Pyc::POP_BLOCK) {
-		else_pop = false;
-
-		PycRef<ASTBlock> prev = curblock;
-		while (prev->end() < pos
-			&& prev->blktype() != ASTBlock::BLK_MAIN) {
-			if (prev->blktype() != ASTBlock::BLK_CONTAINER) {
-				if (prev->end() == 0) {
-					break;
-				}
-
-				/* We want to keep the stack the same, but we need to pop
-				 * a level off the history. */
-				 //stack = stack_hist.top();
-				if (!stack_hist.empty())
-					stack_hist.pop();
-			}
-			blocks.pop();
-
-			if (blocks.empty())
-				break;
-
-			curblock = blocks.top();
-			curblock->append(prev.cast<ASTNode>());
-
-			prev = curblock;
-
-			CheckIfExpr();
-		}
-	}
 }
 
 void BuildFromCode::switchOpcode()
@@ -1418,7 +1456,7 @@ void BuildFromCode::switchOpcode()
 
 		if (curblock->blktype() == ASTBlock::BLK_CONTAINER) {
 			PycRef<ASTContainerBlock> cont = curblock.cast<ASTContainerBlock>();
-			if (cont->hasExcept() && pos < cont->except()) {
+			if (cont->hasExcept() && pos < cont->getExcept()) {
 				PycRef<ASTBlock> except = new ASTCondBlock(ASTBlock::BLK_EXCEPT, 0, NULL, false);
 				except->init();
 				blocks.push(except);
@@ -1486,7 +1524,8 @@ void BuildFromCode::switchOpcode()
 		if (mod->verCompare(3, 10) >= 0)
 			offs *= sizeof(uint16_t); // // BPO-27129
 
-		if (curblock->blktype() == ASTBlock::BLK_FINALLY && curblock->end() == pos) {
+		if (curblock->blktype() == ASTBlock::BLK_FINALLY && curblock->end() == pos)
+		{
 			/* (we should end this like the end of a finally block,
 			* a RERAISE(or END_FINALLY in preivous versions) */
 			this->end_finally();
@@ -1500,13 +1539,15 @@ void BuildFromCode::switchOpcode()
 
 			break;
 		}
-		else if (curblock->blktype() == ASTBlock::BLK_CONTAINER) {
+		else if (curblock->blktype() == ASTBlock::BLK_CONTAINER)
+		{
 			// if curblock is container, add except block
 			PycRef<ASTContainerBlock> cont = curblock.cast<ASTContainerBlock>();
-			if (cont->hasExcept()) {
+			if (cont->hasExcept())
+			{
 				stack_hist.push(stack);
 
-				curblock->setEnd(pos + offs);
+				// pos + offs -> is the start/end of the else (not the end of the except, see exceptions_checker)
 				PycRef<ASTBlock> except = new ASTCondBlock(ASTBlock::BLK_EXCEPT, pos + offs, NULL, false);
 				except->init();
 				blocks.push(except);
@@ -1550,6 +1591,7 @@ void BuildFromCode::switchOpcode()
 				blocks.push(next.cast<ASTBlock>());
 				prev = nil;
 			}
+			/*
 			else if (prev->blktype() == ASTBlock::BLK_EXCEPT) {
 				if (offs == 0) {
 					prev = nil;
@@ -1565,6 +1607,7 @@ void BuildFromCode::switchOpcode()
 				blocks.push(next.cast<ASTBlock>());
 				prev = nil;
 			}
+			*/
 			else if (prev->blktype() == ASTBlock::BLK_ELSE) {
 				/* Special case */
 				prev = blocks.top();
@@ -1609,10 +1652,6 @@ void BuildFromCode::switchOpcode()
 		} while (prev != nil);
 
 		curblock = blocks.top();
-
-		if (curblock->blktype() == ASTBlock::BLK_EXCEPT) {
-			curblock->setEnd(pos + offs);
-		}
 	}
 	break;
 	case Pyc::JUMP_BACKWARD_A:
@@ -2055,7 +2094,7 @@ void BuildFromCode::switchOpcode()
 				/* Add the finally block */
 				stack_hist.push(stack);
 
-				PycRef<ASTBlock> final = new ASTBlock(ASTBlock::BLK_FINALLY, cont->finally(), true);
+				PycRef<ASTBlock> final = new ASTBlock(ASTBlock::BLK_FINALLY, cont->getFinally(), true);
 				blocks.push(final);
 				curblock = blocks.top();
 			}
@@ -2071,7 +2110,12 @@ void BuildFromCode::switchOpcode()
 	}
 	break;
 	case Pyc::POP_EXCEPT:
-		/* Do nothing. */
+		stack = stack_hist.top();
+		stack_hist.pop();
+
+		blocks.pop();
+		blocks.top()->append(curblock.cast<ASTNode>());
+		curblock = blocks.top();
 		break;
 	case Pyc::POP_TOP:
 	{
@@ -2380,7 +2424,7 @@ void BuildFromCode::switchOpcode()
 				need_try = false;
 
 				// turns out it was finally clause, so change previous to a finally and add except
-				int finally = curblock.cast<ASTContainerBlock>()->except();
+				int finally = curblock.cast<ASTContainerBlock>()->getExcept();
 				curblock.cast<ASTContainerBlock>()->setFinally(finally);
 				curblock.cast<ASTContainerBlock>()->setExcept(pos + operand);
 
@@ -2977,28 +3021,19 @@ void BuildFromCode::switchOpcode()
 void BuildFromCode::begin_finally()
 {
 	/*
-		if there is ONLY except (we are inside the BEGIN_FINALLY opcode) then
+		if there is ONLY except then
 		turns out it was a finally clause.
-
 		add it and remove except as we assumed its only except.
 	*/
 	if (curblock->blktype() == ASTBlock::BLK_CONTAINER && !curblock.cast<ASTContainerBlock>()->hasFinally()) {
 		PycRef<ASTContainerBlock> cont = curblock.cast<ASTContainerBlock>();
-		cont->setFinally(cont->except());
+		cont->setFinally(cont->getExcept());
 		cont->setExcept(0);
-
-		/* Add the finally block */
-		stack_hist.push(stack);
-
-		PycRef<ASTBlock> final = new ASTBlock(ASTBlock::BLK_FINALLY, cont->finally(), true);
-		blocks.push(final);
-		curblock = blocks.top();
 	}
 }
 
 void BuildFromCode::end_finally()
 {
-	bool isFinally = false;
 	if (curblock->blktype() == ASTBlock::BLK_DUPLICATED_FINALLY && curblock->end() == pos) {
 		// if its a duplicated finally that got to its end, just pop it, and end this opcode
 		blocks.pop();
@@ -3009,16 +3044,20 @@ void BuildFromCode::end_finally()
 		return;
 	}
 	else if (curblock->blktype() == ASTBlock::BLK_FINALLY) {
-		PycRef<ASTBlock> final = curblock;
-		blocks.pop();
-
 		stack = stack_hist.top();
 		stack_hist.pop();
 
+		// pop finally to container
+		blocks.pop();
+		blocks.top()->append(curblock.cast<ASTNode>());
 		curblock = blocks.top();
-		curblock->append(final.cast<ASTNode>());
-		isFinally = true;
+
+		// pop the container
+		blocks.pop();
+		blocks.top()->append(curblock.cast<ASTNode>());
+		curblock = blocks.top();
 	}
+	/*
 	else if (curblock->blktype() == ASTBlock::BLK_EXCEPT) {
 		blocks.pop();
 		PycRef<ASTBlock> prev = curblock;
@@ -3047,42 +3086,6 @@ void BuildFromCode::end_finally()
 				blocks.push(container);
 			}
 		}
-
-		if (!isUninitAsyncFor) {
-			if (curblock->size() != 0) {
-				blocks.top()->append(curblock.cast<ASTNode>());
-			}
-
-			curblock = blocks.top();
-
-			/* Turn it into an else statement. */
-			if (curblock->end() != pos || curblock.cast<ASTContainerBlock>()->hasFinally()) {
-				PycRef<ASTBlock> elseblk = new ASTBlock(ASTBlock::BLK_ELSE, prev->end());
-				elseblk->init();
-				blocks.push(elseblk);
-				curblock = blocks.top();
-			}
-			else if (prev->end() > pos) {
-				PycRef<ASTBlock> elseblk = new ASTBlock(ASTBlock::BLK_ELSE, prev->end());
-				elseblk->init();
-				blocks.push(elseblk);
-				curblock = blocks.top();
-			}
-			else {
-				stack = stack_hist.top();
-				stack_hist.pop();
-			}
-		}
 	}
-
-	if (curblock->blktype() == ASTBlock::BLK_CONTAINER) {
-		/* This marks the end of the except block(s). */
-		PycRef<ASTContainerBlock> cont = curblock.cast<ASTContainerBlock>();
-		if (!cont->hasFinally() || isFinally) {
-			/* If there's no finally block, pop the container. */
-			blocks.pop();
-			curblock = blocks.top();
-			curblock->append(cont.cast<ASTNode>());
-		}
-	}
+	*/
 }

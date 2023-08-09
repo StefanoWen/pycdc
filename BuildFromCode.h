@@ -30,6 +30,7 @@ private:
 	PycRef<ASTNode> StackPopTop();
 	void CheckIfExpr();
 	void binary_or_inplace();
+	void exceptions_checker();
 	void checker();
 	void switchOpcode();
 	void begin_finally();

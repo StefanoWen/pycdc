@@ -599,6 +599,7 @@ public:
 	virtual void init(int init) { m_inited = init; }
 
 	void setEnd(int end) { m_end = end; }
+	void setBlktype(BlkType blktype) { m_blktype = blktype; }
 
 private:
 	BlkType m_blktype;
@@ -659,11 +660,12 @@ public:
 
 	bool hasFinally() const { return m_finally != 0; }
 	bool hasExcept() const { return m_except != 0; }
-	int finally() const { return m_finally; }
-	int except() const { return m_except; }
 
-	void setExcept(int except) { m_except = except; }
-	void setFinally(int finally) { m_finally = finally; }
+	int getFinally() const { return m_finally; }
+	int getExcept() const { return m_except; }
+
+	void setFinally(int start_pos) { m_finally = start_pos; }
+	void setExcept(int start_pos) { m_except = start_pos; }
 
 private:
 	int m_finally;
