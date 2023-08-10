@@ -3,8 +3,6 @@ from pathlib import Path
 import glob
 import sys
 import re
-import time
-import re
 
 class Compile:
 	def __init__(self, input_files_dir, tests_out_versions_dir, ver='', file_basename_exp=''):
