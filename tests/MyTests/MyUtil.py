@@ -36,6 +36,10 @@ def run_cmd(cmd, with_output=False, with_err=False):
 def get_python_versions_dir():
 	return Path(run_cmd('where python', True).split('\n')[0]).parent.parent
 
+def create_dir_if_not_exists(dir_path):
+	if not os.path.isdir(dir_path):
+		os.makedirs(dir_path)
+
 def print_info(indicate_char, info, head, max_align):
 	print('[{}] {} {}--> {}'.format(
 		indicate_char*2, 
