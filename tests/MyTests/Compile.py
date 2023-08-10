@@ -32,9 +32,9 @@ class Compile:
 	
 	def compile_all(self):
 		self.print_start()
-		python_versions_dir = Path(MyUtil.get_python_path()).parent.parent
 		self.check_versions_dir()
 		versions = self.python_versions
+		python_versions_dir = MyUtil.get_python_versions_dir()
 		if self.ver:
 			versions = [self.ver]
 		for py_ver in versions:

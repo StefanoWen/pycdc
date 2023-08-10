@@ -66,7 +66,7 @@ class Compile:
 	
 	def compile_all(self):
 		self.print_start()
-		python_versions_dir = Path(MyUtil.get_python_path()).parent.parent
+		python_versions_dir = MyUtil.get_python_versions_dir()
 		self.check_compiled_dir()
 		versions = python_versions
 		if self.ver:
