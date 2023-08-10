@@ -36,9 +36,6 @@ def run_cmd(cmd, with_output=False, with_err=False):
 def get_python_versions_dir():
 	return Path(run_cmd('where python', True).split('\n')[0]).parent.parent
 
-def get_longest_filename_in_dir_exp(dir_exp):
-	return max(glob.glob(dir_exp), key=len)
-
 def print_info(indicate_char, info, head, max_align):
 	print('[{}] {} {}--> {}'.format(
 		indicate_char*2, 
