@@ -21,11 +21,11 @@ pycdc.sln
 *.vcxproj.filters
 bytes/*.cpp
 tests/MyTests/*/*.pyc
-tests/MyTests/versions
 tests/*/*.bytecode
 tests/temp/*
 tests/compiled
-tests/tests
+tests/tests_out
+tests/**/tests_out_versions
 
 # User-specific files
 *.rsuser
