@@ -37,12 +37,7 @@ def get_python_path():
 	return run_cmd('where python', True).split('\n')[0]
 
 def get_longest_filename_in_dir_exp(dir_exp):
-	longest_filename = ''
-	for filename in glob.glob(dir_exp):
-		filename = Path(filename).name
-		if len(filename) > len(longest_filename):
-			longest_filename = filename
-	return longest_filename
+	return max(glob.glob(dir_exp), key=len)
 
 def print_info(indicate_char, info, head, max_align):
 	print('[{}] {} {}--> {}'.format(
