@@ -41,9 +41,18 @@ def get_longest_filename_in_dir_exp(dir_exp):
 
 def print_info(indicate_char, info, head, max_align):
 	print('[{}] {} {}--> {}'.format(
-	indicate_char*2, 
-	head, 
-	'-'*(max_align - len(head)),
-	info
-	))
+		indicate_char*2, 
+		head, 
+		'-'*(max_align - len(head)),
+		info))
+
+def print_start(is_decompile, file_exp):
+	print('======================')
+	print('Starting %scompile...' % ('de' if is_decompile else ''))
+	if (is_decompile and file_exp != '*.pyc') or (not is_decompile and file_exp != '*.py'):
+		print('Files expression: %s' % file_exp)
+	print('======================')
+
+
+
 
