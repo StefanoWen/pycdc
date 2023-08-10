@@ -53,5 +53,11 @@ def print_start(is_decompile, file_exp):
 def start_print_filename(filename):
 		print(filename, end='')
 		sys.stdout.flush()
+	
+def end_print_filename(filename_len):
+	to_erase_str = '\b'*filename_len
+	to_erase_str += ' '*filename_len
+	to_erase_str += '\b'*filename_len
+	print(to_erase_str , end='')
 
 
