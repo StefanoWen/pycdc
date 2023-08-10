@@ -2388,7 +2388,7 @@ void BuildFromCode::switchOpcode()
 			stack.pop();
 		}
 		values.push_front(stack.top());
-		for (int i = 0; i < operand; i++) {
+		for (int i = 0; i < operand+1; i++) {
 			stack.push(values.back());
 			values.pop_back();
 		}
