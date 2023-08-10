@@ -2,6 +2,7 @@ from subprocess import Popen, PIPE
 import sys
 import glob
 from pathlib import Path
+import os
 
 python_versions = [
 '30',
