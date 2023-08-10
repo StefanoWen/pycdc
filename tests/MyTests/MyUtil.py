@@ -50,6 +50,8 @@ def print_start(is_decompile, file_exp):
 		print('Files expression: %s' % file_exp)
 	print('======================')
 
-
+def start_print_filename(filename):
+		print(filename, end='')
+		sys.stdout.flush()
 
 
