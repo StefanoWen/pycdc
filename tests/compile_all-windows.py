@@ -53,10 +53,10 @@ class Compile:
 			print('Exiting...')
 			sys.exit()
 		
-		pyc_out_path = python_source_file.parent.joinpath(python_source_file.stem + '.pyc')
+		pyc_out_path = python_source_file.parent / (python_source_file.stem + '.pyc')
 		if not pyc_out_path.is_file():
-			pyc_out_path = python_source_file.parent.joinpath('__pycache__').joinpath('%s.cpython-%s.pyc' % (python_source_file.stem, py_major_ver+py_minor_ver))
-		pyc_out_new_path = Path('./compiled/').joinpath(python_source_file.stem + '.%s.%s' % (py_major_ver, py_minor_ver) + '.pyc')
+			pyc_out_path = python_source_file.parent / '__pycache__' / ('%s.cpython-%s.pyc' % (python_source_file.stem, py_major_ver + py_minor_ver))
+		pyc_out_new_path = Path('./compiled/') / (python_source_file.stem + '.%s.%s' % (py_major_ver, py_minor_ver) + '.pyc')
 		pyc_out_path.replace(pyc_out_new_path.absolute())
 		printed_filename_len = len(python_source_file.name)
 		to_erase_str = '\b'*printed_filename_len
@@ -75,7 +75,7 @@ class Compile:
 			for py_minor_ver in py_minor_versions:
 				print('Compiling Version [ %s.%s ]... ' % (py_major_ver, py_minor_ver), end='')
 				sys.stdout.flush()
-				python_path = python_versions_dir.joinpath('Python%s' % py_major_ver+py_minor_ver).joinpath('python.exe').absolute()
+				python_path = python_versions_dir / ('Python%s' % py_major_ver + py_minor_ver) / 'python.exe'
 				if self.test_name:
 					self.compile_python_source_file(py_major_ver, py_minor_ver, './input/%s.py' % self.test_name, python_path)
 				else:
