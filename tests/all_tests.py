@@ -24,6 +24,10 @@ def run_cmd(cmd, with_output=False, with_err=False):
 def eprint(*args, **kwargs):
 	print(*args, file=sys.stderr, **kwargs)
 
+def print_error_and_exit(error_msg, retcode=1):
+	eprint('\nERROR:\n' + error_msg)
+	sys.exit(retcode)
+
 def create_dir_if_not_exists(dir_path):
 	if not os.path.isdir(dir_path):
 		os.makedirs(dir_path)
@@ -57,40 +61,40 @@ def compile(input_dir, compiled_dir, versions, file_basename_exp):
 		return Path(run_cmd('where python', True).split('\n')[0]).parent.parent
 	
 	create_dir_if_not_exists(compiled_dir)
-	python_path = get_python_versions_dir() / ('Python%s' % versions[0]) / 'python.exe'
+	python_versions_dir = get_python_versions_dir()
 	pycache_dir = input_dir / '__pycache__'
 	
-	for py_ver in versions:
-		print('Compiling Version [ %s ]... ' % py_ver, end='')
-		sys.stdout.flush()
-		
-		python_path =  python_path.parent.parent / ('Python%s' % py_ver) / 'python.exe'
-		for source_file in glob.glob(str(input_dir  / (file_basename_exp + '.py'))):
-			source_file = Path(source_file)
-			start_print_filename(source_file.name)
+	for py_major_ver, py_minor_versions in versions.items():
+		for py_minor_ver in py_minor_versions:
+			print('Compiling Version [ %s.%s ]... ' % (py_major_ver, py_minor_ver), end='')
+			sys.stdout.flush()
 			
-			pyc_file = compiled_dir / (source_file.stem + '_%s' % py_ver + '.pyc')
-			
-			if pyc_file.is_file():
+			py_ver = py_major_ver + py_minor_ver
+			python_path =  python_versions_dir / ('Python%s' % py_ver) / 'python.exe'
+			for source_file in glob.glob(str(input_dir  / (file_basename_exp + '.py'))):
+				source_file = Path(source_file)
+				start_print_filename(source_file.name)
+				
+				pyc_file = compiled_dir / (source_file.stem + '.%s.%s' % (py_major_ver, py_minor_ver) + '.pyc')
+				
+				if pyc_file.is_file():
+					end_print_filename(len(source_file.name))
+					continue
+				
+				cmd_in = '"{}" -m py_compile "{}"'.format(str(python_path), source_file)
+				cmd_out, cmd_err, retcode = run_cmd(cmd_in, True, True)
+				if retcode:
+					end_print_filename(len(source_file.name))
+					print_error_and_exit(cmd_err, retcode)
+				
+				# move pyc file
+				pyc_out_path = input_dir / (source_file.stem + '.pyc')
+				if not pyc_out_path.is_file():
+					pyc_out_path = pycache_dir / ('%s.cpython-%s.pyc' % (source_file.stem, py_ver))
+				pyc_out_path.replace(pyc_file)
+				
 				end_print_filename(len(source_file.name))
-				continue
-			
-			cmd_in = '"{}" -m py_compile "{}"'.format(str(python_path), source_file)
-			cmd_out, cmd_err, retcode = run_cmd(cmd_in, True, True)
-			if retcode:
-				end_print_filename(len(source_file.name))
-				print('ERROR.')
-				sys.stderr.write(cmd_err)
-				sys.exit(retcode)
-			
-			# move pyc file
-			pyc_out_path = input_dir / (source_file.stem + '.pyc')
-			if not pyc_out_path.is_file():
-				pyc_out_path = pycache_dir / ('%s.cpython-%s.pyc' % (source_file.stem, py_ver))
-			pyc_out_path.replace(pyc_file)
-			
-			end_print_filename(len(source_file.name))
-		print('Done.')
+			print('Done.')
 	print('')
 	if os.path.isdir(pycache_dir):
 		os.rmdir(pycache_dir)
@@ -113,21 +117,22 @@ def decompile(compiled_dir, decompiled_dir, versions, file_basename_exp, pycdc_p
 	
 	create_dir_if_not_exists(decompiled_dir)
 	
-	for py_ver in versions:
-		print('Decompiling Version [ %s ]... ' % py_ver, end='')
-		sys.stdout.flush()
-		
-		for pyc_file in glob.glob(str(compiled_dir / (file_basename_exp + '_%s' % py_ver + '.pyc'))):
-			pyc_file = Path(pyc_file)
-			start_print_filename(pyc_file.name)
+	for py_major_ver, py_minor_versions in versions.items():
+		for py_minor_ver in py_minor_versions:
+			print('Decompiling Version [ %s.%s ]... ' % (py_major_ver, py_minor_ver), end='')
+			sys.stdout.flush()
 			
-			decompiled_output = get_decompiled_output(pyc_file.resolve(strict=1))
-			source_out_path = decompiled_dir / (pyc_file.stem + '.py')
-			with open(source_out_path, 'w') as f:
-				f.write(decompiled_output)
-			
-			end_print_filename(len(pyc_file.name))
-		print('Done.')
+			for pyc_file in glob.glob(str(compiled_dir / (file_basename_exp + '.%s.%s' % (py_major_ver, py_minor_ver) + '.pyc'))):
+				pyc_file = Path(pyc_file)
+				start_print_filename(pyc_file.name)
+				
+				decompiled_output = get_decompiled_output(pyc_file.resolve(strict=1))
+				source_out_path = decompiled_dir / (pyc_file.stem + '.py')
+				with open(source_out_path, 'w') as f:
+					f.write(decompiled_output)
+				
+				end_print_filename(len(pyc_file.name))
+			print('Done.')
 	print('')
 
 def check_error0(source_file, decompiled_source_file_first_line, decompiled_source_file_after_first_line):
@@ -189,11 +194,11 @@ def check_failed(source_file, decompiled_source_path):
 		return True
 	return False
 
-def print_summary(version_to_decompiled_count, input_files_count, first_version):
+def print_summary(version_to_decompiled_count, input_files_count):
 	print('Summary:')
-	version_format = 'Version %s'
-	max_align_need = len(version_format % first_version)
-	for py_ver, decompiled_count in version_to_decompiled_count.items():
+	version_format = 'Version %s.%s'
+	max_align_need = len(version_format % ('1', '11'))
+	for (py_major_ver, py_minor_ver), decompiled_count in version_to_decompiled_count.items():
 		if decompiled_count == input_files_count:
 			indicate_char = '+'
 			info_str = 'Passed'
@@ -203,7 +208,7 @@ def print_summary(version_to_decompiled_count, input_files_count, first_version)
 		else:
 			indicate_char = '-'
 			info_str = 'Failed'
-		print_info(indicate_char, info_str + ' (%d / %d)' % (decompiled_count, input_files_count), version_format % py_ver, max_align_need)
+		print_info(indicate_char, info_str + ' (%d / %d)' % (decompiled_count, input_files_count), version_format % (py_major_ver, py_minor_ver), max_align_need)
 
 def main():
 	global max_align_need
@@ -227,23 +232,25 @@ def main():
 				ver = arg
 	
 	pycdc_path = run_cmd('where pycdc%s' % ('_old' if old else ''), True).split('\n')[0]
+	versions = {
+		'3': ['0',
+		'1',
+		'2',
+		'3',
+		'4',
+		'5',
+		'6',
+		'7',
+		'8',
+		'9',
+		'10',
+		#'11'
+		]}
 	if ver:
-		versions = [ver]
-	else:
-		versions = python_versions = [
-			'30',
-			'31',
-			'32',
-			'33',
-			'34',
-			'35',
-			'36',
-			'37',
-			'38',
-			'39',
-			'310',
-			#'311',
-			]
+		if ver[0] not in versions or ver[1:] not in versions[ver[0]]:
+			print_error_and_exit('version not supported')
+		else:
+			versions = {ver[0]: [ver[1:]]}
 	
 	input_dir = Path('./input/')
 	input_dir_exp = str(input_dir / (file_basename_exp + '.py'))
@@ -263,22 +270,24 @@ def main():
 	
 	version_to_decompiled_count = {}
 	
-	for py_ver in versions:
-		print('Testing Version [ %s ]... ' % py_ver)
-		print('=====================')
-		if py_ver not in version_to_decompiled_count:
-			version_to_decompiled_count[py_ver] = 0
-		
-		for source_file in input_files:
-			source_file = Path(source_file)
-			decompiled_source_path = decompiled_dir / (source_file.stem + '_%s' % py_ver + '.py')
-			if check_failed(source_file, decompiled_source_path):
-				continue
-			print_info('+', 'Succeeded', source_file.name, max_align_need)
-			version_to_decompiled_count[py_ver] += 1
-		print()
+	for py_major_ver, py_minor_versions in versions.items():
+		for py_minor_ver in py_minor_versions:
+			print('Testing Version [ %s.%s ]... ' % (py_major_ver, py_minor_ver))
+			print('=====================')
+			
+			if (py_major_ver, py_minor_ver) not in version_to_decompiled_count:
+				version_to_decompiled_count[(py_major_ver, py_minor_ver)] = 0
+			
+			for source_file in input_files:
+				source_file = Path(source_file)
+				decompiled_source_path = decompiled_dir / (source_file.stem + '.%s.%s' % (py_major_ver, py_minor_ver) + '.py')
+				if check_failed(source_file, decompiled_source_path):
+					continue
+				print_info('+', 'Succeeded', source_file.name, max_align_need)
+				version_to_decompiled_count[(py_major_ver, py_minor_ver)] += 1
+			print()
 	print('Done.')
-	print_summary(version_to_decompiled_count, len(input_files), versions[0])
+	print_summary(version_to_decompiled_count, len(input_files))
 
 
 if __name__ == '__main__':
