@@ -43,23 +43,17 @@ def print_error_and_exit(error_msg, retcode=1):
 	eprint('\nERROR:\n' + error_msg)
 	sys.exit(retcode)
 
-def my_colored(str, color, *args, **kwargs):
-	if with_color:
-		return colored(str, color, *args, **kwargs)
-	else:
-		return str
-
 def print_info(indicate_char, info, head='', max_align='', color=WHITE_COLOR):
 	if head and max_align:
 		print('[{}] {} {}--> {}'.format(
 			indicate_char*2, 
 			head, 
 			'-'*(max_align - len(head)),
-			my_colored(info, color)))
+			colored(info, color)))
 	else:
 		print('[{}] {}'.format(
 			indicate_char*2, 
-			my_colored(info, color)))
+			colored(info, color)))
 
 def start_print_same_line(filename):
 	sys.stdout.write(filename)
@@ -75,7 +69,7 @@ def print_start(file_basename_exp):
 	print('======================')
 	print('Starting TESTS...')
 	if file_basename_exp != '*':
-		print('Files expression: < %s >' % my_colored(file_basename_exp, CYAN_COLOR))
+		print('Files expression: < %s >' % colored(file_basename_exp, CYAN_COLOR))
 	print('======================')
 
 def create_dir_if_not_exists(dir_path):
@@ -212,7 +206,7 @@ def check_stdout_failed(source_file, decompiled_source_file_contents):
 	
 	if source_files_contents[source_file.name] != decompiled_source_file_contents:
 		if quiet_level < 2:
-			print_info('-', '%s %s' % (my_colored('Failed', LRED_COLOR), my_colored('(Different stdout)', LMAGENTA_COLOR)), source_file.name, max_align_need)
+			print_info('-', '%s %s' % (colored('Failed', LRED_COLOR), colored('(Different stdout)', LMAGENTA_COLOR)), source_file.name, max_align_need)
 			# putting a lot of prints so i can switch to .encode() easily
 			if debug:
 				print('-----------------')
@@ -239,7 +233,7 @@ def print_summary(version_to_decompiled_count, input_files_count):
 	versions_passed = 0
 	versions_partially_passed = 0
 	if quiet_level < 3:
-		print('Each Version Summary:')
+		print('Each Version Summary: (%s tests)' % colored(str(input_files_count), LCYAN_COLOR))
 		version_format = 'Version %s.%s'
 		max_align_need = len(version_format % ('1', '11'))
 		for (py_major_ver, py_minor_ver), decompiled_count in version_to_decompiled_count.items():
@@ -257,7 +251,7 @@ def print_summary(version_to_decompiled_count, input_files_count):
 				indicate_char = '-'
 				info_str = 'Failed'
 				color = LRED_COLOR
-			print_info(indicate_char, info_str + ' (%d out of %d tests)' % (decompiled_count, input_files_count), version_format % (py_major_ver, py_minor_ver), max_align_need, color=color)
+			print_info(indicate_char, info_str + ' (%d / %d)' % (decompiled_count, input_files_count), version_format % (py_major_ver, py_minor_ver), max_align_need, color=color)
 		print()
 	else:
 		for decompiled_count in version_to_decompiled_count.values():
@@ -266,7 +260,7 @@ def print_summary(version_to_decompiled_count, input_files_count):
 			elif decompiled_count > 0:
 				versions_partially_passed += 1
 	versions_count = len(version_to_decompiled_count)
-	print('Versions Summary: (%s versions)' % my_colored(str(versions_count), LCYAN_COLOR))
+	print('Versions Summary: (%s versions)' % colored(str(versions_count), LCYAN_COLOR))
 	if versions_passed == versions_count:
 		print_info('+', 'PASSED ALL', color=LGREEN_COLOR)
 	elif versions_partially_passed:
@@ -337,7 +331,12 @@ def init_and_get_args():
 	if with_color:
 		global colored
 		from colorama import just_fix_windows_console
-		from termcolor import colored
+		from termcolor import colored as termcolor_colored
+		def colored(str, color, *args, **kwargs):
+			if with_color:
+				return termcolor_colored(str, color, *args, **kwargs)
+			else:
+				return str
 		just_fix_windows_console()
 	
 	pycdc_path = run_cmd('where pycdc%s' % old_str, True).split('\n')[0]
@@ -389,7 +388,7 @@ def main():
 				print()
 	if quiet_level < 2:
 		print()
-	print('Finished in %s seconds.' % my_colored('%.2f' % (time.time() - tests_starting_time), LCYAN_COLOR))
+	print('Finished in %s seconds.' % colored('%.2f' % (time.time() - tests_starting_time), LCYAN_COLOR))
 	print_summary(version_to_decompiled_count, len(input_files))
 
 
