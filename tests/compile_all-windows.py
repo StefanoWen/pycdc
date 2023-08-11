@@ -1,9 +1,9 @@
+from subprocess import Popen, PIPE
 import os
 from pathlib import Path
 import glob
 import shutil
 import sys
-import MyTests.MyUtil as MyUtil
 
 python_versions = {
 '3': ['0',
@@ -21,6 +21,23 @@ python_versions = {
 ]
 }
 
+def run_cmd(cmd, with_output=False, with_err=False):
+	proc = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
+	cmd_stdout, cmd_stderr = proc.communicate()
+	cmd_stdout = cmd_stdout.decode().replace('\r', '')
+	cmd_stderr = cmd_stderr.decode().replace('\r', '')
+	if with_err and with_output:
+		return cmd_stdout, cmd_stderr, proc.returncode
+	elif with_err:
+		return cmd_stderr, proc.returncode
+	elif with_output:
+		return cmd_stdout
+	else:
+		return None
+
+def get_python_versions_dir():
+	return Path(run_cmd('where python', True).split('\n')[0]).parent.parent
+
 class Compile:
 	def __init__(self, ver='', test_name=''):
 		self.ver = ver
@@ -28,7 +45,7 @@ class Compile:
 
 	def py_compile_verion(self, python_path, python_source_path):
 		cmd_in = '"{}" -m py_compile "{}"'.format(python_path, python_source_path)
-		stderr, ret_code = MyUtil.run_cmd(cmd_in, with_err=True)
+		stderr, ret_code = run_cmd(cmd_in, with_err=True)
 		return stderr
 
 	def check_compiled_dir(self):
@@ -66,7 +83,7 @@ class Compile:
 	
 	def compile_all(self):
 		self.print_start()
-		python_versions_dir = MyUtil.get_python_versions_dir()
+		python_versions_dir = get_python_versions_dir()
 		self.check_compiled_dir()
 		versions = python_versions
 		if self.ver:
