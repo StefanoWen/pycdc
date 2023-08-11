@@ -230,11 +230,13 @@ def print_summary(version_to_decompiled_count, input_files_count):
 	print('Summary:')
 	version_format = 'Version %s.%s'
 	max_align_need = len(version_format % ('1', '11'))
+	versions_succeeded = 0
 	for (py_major_ver, py_minor_ver), decompiled_count in version_to_decompiled_count.items():
 		if decompiled_count == input_files_count:
 			indicate_char = '+'
 			info_str = 'Passed'
 			color = GREEN_COLOR
+			versions_succeeded += 1
 		elif decompiled_count > 0:
 			indicate_char = '*'
 			info_str = 'Partially passed'
@@ -243,7 +245,23 @@ def print_summary(version_to_decompiled_count, input_files_count):
 			indicate_char = '-'
 			info_str = 'Failed'
 			color = RED_COLOR
-		print_info(indicate_char, info_str + ' (%d / %d)' % (decompiled_count, input_files_count), version_format % (py_major_ver, py_minor_ver), max_align_need, color=color)
+		if quiet_level < 3:
+			print_info(indicate_char, info_str + ' (%d out of %d tests)' % (decompiled_count, input_files_count), version_format % (py_major_ver, py_minor_ver), max_align_need, color=color)
+	print()
+	versions_count = len(version_to_decompiled_count)
+	if versions_succeeded == versions_count:
+		indicate_char = '+'
+		info_str = 'PASSED ALL'
+		color = GREEN_COLOR
+	elif versions_succeeded > 0:
+		indicate_char = '*'
+		info_str = 'Partially passed' + ' (%d out of %d versions)' % (versions_succeeded, versions_count)
+		color = YELLOW_COLOR
+	else:
+		indicate_char = '+'
+		info_str = 'FAILED ALL'
+		color = RED_COLOR
+	print_info(indicate_char, info_str, 'Versions', 1, color=color)
 
 def init_and_get_args():
 	global debug
@@ -274,10 +292,8 @@ def init_and_get_args():
 				debug = True
 			elif arg == 'old':
 				old_str = '_old'
-			elif arg == 'q':
-				quiet_level = 1
-			elif arg == 'qq':
-				quiet_level = 2
+			elif arg.count('q') == len(arg):
+				quiet_level = len(arg)
 			elif arg == 'noc':
 				with_color = False
 			elif arg.startswith('exp='):
