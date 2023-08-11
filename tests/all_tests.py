@@ -39,11 +39,11 @@ def print_info(indicate_char, info, head, max_align):
 		'-'*(max_align - len(head)),
 		info))
 
-def start_print_filename(filename):
+def start_print_same_line(filename):
 	sys.stdout.write(filename)
 	sys.stdout.flush()
 	
-def end_print_filename(filename_len):
+def end_print_same_line(filename_len):
 	to_erase_str = '\b'*filename_len
 	to_erase_str += ' '*filename_len
 	to_erase_str += '\b'*filename_len
@@ -64,27 +64,30 @@ def compile(input_dir, compiled_dir, versions, file_basename_exp):
 	python_versions_dir = get_python_versions_dir()
 	pycache_dir = input_dir / '__pycache__'
 	
+	version_start_print = 'Compiling Version [ '
+	start_print_same_line(version_start_print)
 	for py_major_ver, py_minor_versions in versions.items():
 		for py_minor_ver in py_minor_versions:
-			print('Compiling Version [ %s.%s ]... ' % (py_major_ver, py_minor_ver), end='')
-			sys.stdout.flush()
+			version_print = '%s.%s ]... ' % (py_major_ver, py_minor_ver)
+			start_print_same_line(version_print)
 			
 			py_ver = py_major_ver + py_minor_ver
 			python_path =  python_versions_dir / ('Python%s' % py_ver) / 'python.exe'
 			for source_file in glob.glob(str(input_dir  / (file_basename_exp + '.py'))):
 				source_file = Path(source_file)
-				start_print_filename(source_file.name)
+				if quiet_level < 1:
+					start_print_same_line(source_file.name)
 				
 				pyc_file = compiled_dir / (source_file.stem + '.%s.%s' % (py_major_ver, py_minor_ver) + '.pyc')
 				
 				if pyc_file.is_file():
-					end_print_filename(len(source_file.name))
+					end_print_same_line(len(source_file.name))
 					continue
 				
 				cmd_in = '"{}" -m py_compile "{}"'.format(str(python_path), source_file)
 				cmd_out, cmd_err, retcode = run_cmd(cmd_in, True, True)
 				if retcode:
-					end_print_filename(len(source_file.name))
+					end_print_same_line(len(source_file.name))
 					print_error_and_exit(cmd_err, retcode)
 				
 				# move pyc file
@@ -93,9 +96,12 @@ def compile(input_dir, compiled_dir, versions, file_basename_exp):
 					pyc_out_path = pycache_dir / ('%s.cpython-%s.pyc' % (source_file.stem, py_ver))
 				pyc_out_path.replace(pyc_file)
 				
-				end_print_filename(len(source_file.name))
-			print('Done.')
-	print('')
+				if quiet_level < 1:
+					end_print_same_line(len(source_file.name))
+			end_print_same_line(len(version_print))
+	end_print_same_line(len(version_start_print))
+	print('Compilation Done.')
+	print()
 	if os.path.isdir(pycache_dir):
 		os.rmdir(pycache_dir)
 
@@ -117,41 +123,49 @@ def decompile(compiled_dir, decompiled_dir, versions, file_basename_exp, pycdc_p
 	
 	create_dir_if_not_exists(decompiled_dir)
 	
+	version_start_print = 'Decompiling Version [ '
+	start_print_same_line(version_start_print)
 	for py_major_ver, py_minor_versions in versions.items():
 		for py_minor_ver in py_minor_versions:
-			print('Decompiling Version [ %s.%s ]... ' % (py_major_ver, py_minor_ver), end='')
-			sys.stdout.flush()
+			version_print = '%s.%s ]... ' % (py_major_ver, py_minor_ver)
+			start_print_same_line(version_print)
 			
 			for pyc_file in glob.glob(str(compiled_dir / (file_basename_exp + '.%s.%s' % (py_major_ver, py_minor_ver) + '.pyc'))):
 				pyc_file = Path(pyc_file)
-				start_print_filename(pyc_file.name)
+				if quiet_level < 1:
+					start_print_same_line(pyc_file.name)
 				
 				decompiled_output = get_decompiled_output(pyc_file.resolve(strict=1))
 				source_out_path = decompiled_dir / (pyc_file.stem + '.py')
 				with open(source_out_path, 'w') as f:
 					f.write(decompiled_output)
 				
-				end_print_filename(len(pyc_file.name))
-			print('Done.')
-	print('')
+				if quiet_level < 1:
+					end_print_same_line(len(pyc_file.name))
+			end_print_same_line(len(version_print))
+	end_print_same_line(len(version_start_print))
+	print('Decompilation Done.')
+	print()
 
 def check_error0(source_file, decompiled_source_file_first_line, decompiled_source_file_after_first_line):
 	if decompiled_source_file_first_line.startswith('#ERROR0'):
-		print_info('-', 'Failed (pycdc crashed in runtime)', source_file.name, max_align_need)
-		if debug:
-			print('-----------------')
-			print(decompiled_source_file_after_first_line)
-			print('-----------------')
+		if quiet_level < 2:
+			print_info('-', 'Failed (pycdc crashed in runtime)', source_file.name, max_align_need)
+			if debug:
+				print('-----------------')
+				print(decompiled_source_file_after_first_line)
+				print('-----------------')
 		return True
 	return False
 
 def check_error1(source_file, decompiled_source_file_first_line, decompiled_source_file_after_first_line):
 	if decompiled_source_file_first_line.startswith('#ERROR1'):
-		print_info('-', 'Failed (Unsupported / Warning, etc.)', source_file.name, max_align_need)
-		if debug:
-			print('-----------------')
-			print(decompiled_source_file_after_first_line)
-			print('-----------------')
+		if quiet_level < 2:
+			print_info('-', 'Failed (Unsupported / Warning, etc.)', source_file.name, max_align_need)
+			if debug:
+				print('-----------------')
+				print(decompiled_source_file_after_first_line)
+				print('-----------------')
 		return True
 	return False
 
@@ -171,14 +185,15 @@ def check_stdout_failed(source_file, decompiled_source_file_contents):
 	decompiled_source_file_contents = '\n'.join(list(filter(lambda x: x.strip(), decompiled_source_file_contents.split('\n'))))
 	
 	if source_files_contents[source_file.name] != decompiled_source_file_contents:
-		print_info('-', 'Failed (Different stdout)', source_file.name, max_align_need)
-		# putting a lot of prints so i can switch to .encode() easily
-		if debug:
-			print('-----------------')
-			print(source_files_contents[source_file.name])
-			print('=================')
-			print(decompiled_source_file_contents)
-			print('-----------------')
+		if quiet_level < 2:
+			print_info('-', 'Failed (Different stdout)', source_file.name, max_align_need)
+			# putting a lot of prints so i can switch to .encode() easily
+			if debug:
+				print('-----------------')
+				print(source_files_contents[source_file.name])
+				print('=================')
+				print(decompiled_source_file_contents)
+				print('-----------------')
 		return True
 	return False
 
@@ -214,9 +229,11 @@ def main():
 	global max_align_need
 	global source_files_contents
 	global debug
+	global quiet_level
 	
 	debug = False
 	old = False
+	quiet_level = 0
 	file_basename_exp = '*'
 	ver = ''
 	if len(sys.argv) > 1:
@@ -225,6 +242,10 @@ def main():
 				debug = True
 			elif arg == 'old':
 				old = True
+			elif arg == 'q':
+				quiet_level = 1
+			elif arg == 'qq':
+				quiet_level = 2
 			elif arg.startswith('exp='):
 				file_basename_exp = arg.split('=', 1)[1]
 				file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
@@ -248,7 +269,7 @@ def main():
 		]}
 	if ver:
 		if ver[0] not in versions or ver[1:] not in versions[ver[0]]:
-			print_error_and_exit('version not supported')
+			print_error_and_exit('[-] Version not supported')
 		else:
 			versions = {ver[0]: [ver[1:]]}
 	
@@ -260,6 +281,7 @@ def main():
 		return
 	
 	print_start(file_basename_exp)
+	tests_starting_time = time.time()
 	max_align_need = len(max(input_files, key=len))
 	source_files_contents = {}
 	
@@ -272,8 +294,9 @@ def main():
 	
 	for py_major_ver, py_minor_versions in versions.items():
 		for py_minor_ver in py_minor_versions:
-			print('Testing Version [ %s.%s ]... ' % (py_major_ver, py_minor_ver))
-			print('=====================')
+			if quiet_level < 2:
+				print('Testing Version [ %s.%s ]... ' % (py_major_ver, py_minor_ver))
+				print('=====================')
 			
 			if (py_major_ver, py_minor_ver) not in version_to_decompiled_count:
 				version_to_decompiled_count[(py_major_ver, py_minor_ver)] = 0
@@ -283,10 +306,14 @@ def main():
 				decompiled_source_path = decompiled_dir / (source_file.stem + '.%s.%s' % (py_major_ver, py_minor_ver) + '.py')
 				if check_failed(source_file, decompiled_source_path):
 					continue
-				print_info('+', 'Succeeded', source_file.name, max_align_need)
+				if quiet_level < 2:
+					print_info('+', 'Succeeded', source_file.name, max_align_need)
 				version_to_decompiled_count[(py_major_ver, py_minor_ver)] += 1
-			print()
-	print('Done.')
+			if quiet_level < 2:
+				print()
+	if quiet_level < 2:
+		print()
+	print('Finished in %.2f seconds.' % (time.time() - tests_starting_time))
 	print_summary(version_to_decompiled_count, len(input_files))
 
 
