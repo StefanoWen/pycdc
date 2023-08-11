@@ -260,13 +260,16 @@ def print_summary(version_to_decompiled_count, input_files_count):
 			elif decompiled_count > 0:
 				versions_partially_passed += 1
 	versions_count = len(version_to_decompiled_count)
+	versions_failed = (versions_count - versions_passed - versions_partially_passed)
 	print('Versions Summary: (%s versions)' % colored(str(versions_count), LCYAN_COLOR))
 	if versions_passed == versions_count:
 		print_info('+', 'PASSED ALL', color=LGREEN_COLOR)
 	elif versions_partially_passed:
-		print_info('*', 'Partially passed %d' % versions_partially_passed, color=YELLOW_COLOR)
-		print_info('+', 'Passed %d' % versions_passed, color=LGREEN_COLOR)
-		print_info('-', 'Failed %d' % (versions_count - versions_passed - versions_partially_passed), color=LRED_COLOR)
+		to_print_list = [('*', 'Partially passed', versions_partially_passed, YELLOW_COLOR),
+			('+', 'Passed', versions_passed, LGREEN_COLOR),
+			('-', 'Failed', versions_failed, LRED_COLOR)]
+		for indicate_char, status, count, color in to_print_list:
+			print_info(indicate_char, status + ' (%d / %d)' % (count, versions_count), color=color)
 	else:
 		print_info('-', 'FAILED ALL', color=LRED_COLOR)
 
