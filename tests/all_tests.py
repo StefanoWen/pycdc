@@ -7,6 +7,16 @@ import sys
 import re
 import time
 
+WHITE_COLOR = 'white'
+LRED_COLOR = 'light_red'
+LGREEN_COLOR = 'light_green'
+LYELLOW_COLOR = 'light_yellow'
+LCYAN_COLOR = 'light_cyan'
+RED_COLOR = LRED_COLOR
+GREEN_COLOR = LGREEN_COLOR
+YELLOW_COLOR = 'yellow'
+CYAN_COLOR = 'cyan'
+
 def run_cmd(cmd, with_output=False, with_err=False):
 	proc = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 	cmd_stdout, cmd_stderr = proc.communicate()
@@ -28,16 +38,19 @@ def print_error_and_exit(error_msg, retcode=1):
 	eprint('\nERROR:\n' + error_msg)
 	sys.exit(retcode)
 
-def create_dir_if_not_exists(dir_path):
-	if not os.path.isdir(dir_path):
-		os.makedirs(dir_path)
+def my_colored(str, color, *args, **kwargs):
+	if with_color:
+		return colored(str, color, *args, **kwargs)
+	else:
+		return str
 
-def print_info(indicate_char, info, head, max_align):
+def print_info(indicate_char, info, head, max_align, color=WHITE_COLOR):
 	print('[{}] {} {}--> {}'.format(
 		indicate_char*2, 
 		head, 
 		'-'*(max_align - len(head)),
-		info))
+		my_colored(info, color)))
+	
 
 def start_print_same_line(filename):
 	sys.stdout.write(filename)
@@ -53,8 +66,12 @@ def print_start(file_basename_exp):
 	print('======================')
 	print('Starting TESTS...')
 	if file_basename_exp != '*':
-		print('Files expression: < %s >' % file_basename_exp)
+		print('Files expression: < %s >' % my_colored(file_basename_exp, CYAN_COLOR))
 	print('======================')
+
+def create_dir_if_not_exists(dir_path):
+	if not os.path.isdir(dir_path):
+		os.makedirs(dir_path)
 
 def compile(input_dir, compiled_dir, versions, file_basename_exp):
 	def get_python_versions_dir():
@@ -150,7 +167,7 @@ def decompile(compiled_dir, decompiled_dir, versions, file_basename_exp, pycdc_p
 def check_error0(source_file, decompiled_source_file_first_line, decompiled_source_file_after_first_line):
 	if decompiled_source_file_first_line.startswith('#ERROR0'):
 		if quiet_level < 2:
-			print_info('-', 'Failed (pycdc crashed in runtime)', source_file.name, max_align_need)
+			print_info('-', 'Failed (pycdc crashed in runtime)', source_file.name, max_align_need, RED_COLOR)
 			if debug:
 				print('-----------------')
 				print(decompiled_source_file_after_first_line)
@@ -161,7 +178,7 @@ def check_error0(source_file, decompiled_source_file_first_line, decompiled_sour
 def check_error1(source_file, decompiled_source_file_first_line, decompiled_source_file_after_first_line):
 	if decompiled_source_file_first_line.startswith('#ERROR1'):
 		if quiet_level < 2:
-			print_info('-', 'Failed (Unsupported / Warning, etc.)', source_file.name, max_align_need)
+			print_info('-', 'Failed (Unsupported / Warning, etc.)', source_file.name, max_align_need, RED_COLOR)
 			if debug:
 				print('-----------------')
 				print(decompiled_source_file_after_first_line)
@@ -186,7 +203,7 @@ def check_stdout_failed(source_file, decompiled_source_file_contents):
 	
 	if source_files_contents[source_file.name] != decompiled_source_file_contents:
 		if quiet_level < 2:
-			print_info('-', 'Failed (Different stdout)', source_file.name, max_align_need)
+			print_info('-', 'Failed (Different stdout)', source_file.name, max_align_need, YELLOW_COLOR)
 			# putting a lot of prints so i can switch to .encode() easily
 			if debug:
 				print('-----------------')
@@ -217,42 +234,26 @@ def print_summary(version_to_decompiled_count, input_files_count):
 		if decompiled_count == input_files_count:
 			indicate_char = '+'
 			info_str = 'Passed'
+			color = GREEN_COLOR
 		elif decompiled_count > 0:
 			indicate_char = '*'
 			info_str = 'Partially passed'
+			color = YELLOW_COLOR
 		else:
 			indicate_char = '-'
 			info_str = 'Failed'
-		print_info(indicate_char, info_str + ' (%d / %d)' % (decompiled_count, input_files_count), version_format % (py_major_ver, py_minor_ver), max_align_need)
+			color = RED_COLOR
+		print_info(indicate_char, info_str + ' (%d / %d)' % (decompiled_count, input_files_count), version_format % (py_major_ver, py_minor_ver), max_align_need, color=color)
 
-def main():
-	global max_align_need
-	global source_files_contents
+def init_and_get_args():
 	global debug
-	global quiet_level
-	
 	debug = False
-	old = False
+	global quiet_level
 	quiet_level = 0
+	global with_color
+	with_color = True
+	old_str = ''
 	file_basename_exp = '*'
-	ver = ''
-	if len(sys.argv) > 1:
-		for arg in sys.argv[1:]:
-			if arg == 'debug':
-				debug = True
-			elif arg == 'old':
-				old = True
-			elif arg == 'q':
-				quiet_level = 1
-			elif arg == 'qq':
-				quiet_level = 2
-			elif arg.startswith('exp='):
-				file_basename_exp = arg.split('=', 1)[1]
-				file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
-			elif arg.isdigit():
-				ver = arg
-	
-	pycdc_path = run_cmd('where pycdc%s' % ('_old' if old else ''), True).split('\n')[0]
 	versions = {
 		'3': ['0',
 		'1',
@@ -267,11 +268,41 @@ def main():
 		'10',
 		#'11'
 		]}
-	if ver:
-		if ver[0] not in versions or ver[1:] not in versions[ver[0]]:
-			print_error_and_exit('[-] Version not supported')
-		else:
-			versions = {ver[0]: [ver[1:]]}
+	if len(sys.argv) > 1:
+		for arg in sys.argv[1:]:
+			if arg == 'debug':
+				debug = True
+			elif arg == 'old':
+				old_str = '_old'
+			elif arg == 'q':
+				quiet_level = 1
+			elif arg == 'qq':
+				quiet_level = 2
+			elif arg == 'noc':
+				with_color = False
+			elif arg.startswith('exp='):
+				file_basename_exp = arg.split('=', 1)[1]
+				file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
+			elif arg.isdigit():
+				if arg[0] not in versions or arg[1:] not in versions[arg[0]]:
+					print_error_and_exit('[-] Version not supported')
+				else:
+					versions = {arg[0]: [arg[1:]]}
+	
+	if with_color:
+		global colored
+		from colorama import just_fix_windows_console
+		from termcolor import colored
+		just_fix_windows_console()
+	
+	pycdc_path = run_cmd('where pycdc%s' % old_str, True).split('\n')[0]
+	return file_basename_exp, pycdc_path, versions
+
+def main():
+	global max_align_need
+	global source_files_contents
+	
+	file_basename_exp, pycdc_path, versions = init_and_get_args()
 	
 	input_dir = Path('./input/')
 	input_dir_exp = str(input_dir / (file_basename_exp + '.py'))
@@ -307,13 +338,13 @@ def main():
 				if check_failed(source_file, decompiled_source_path):
 					continue
 				if quiet_level < 2:
-					print_info('+', 'Succeeded', source_file.name, max_align_need)
+					print_info('+', 'Succeeded', source_file.name, max_align_need, GREEN_COLOR)
 				version_to_decompiled_count[(py_major_ver, py_minor_ver)] += 1
 			if quiet_level < 2:
 				print()
 	if quiet_level < 2:
 		print()
-	print('Finished in %.2f seconds.' % (time.time() - tests_starting_time))
+	print('Finished in %s seconds.' % my_colored('%.2f' % (time.time() - tests_starting_time), LCYAN_COLOR))
 	print_summary(version_to_decompiled_count, len(input_files))
 
 
