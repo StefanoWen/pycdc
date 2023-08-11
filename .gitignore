@@ -20,12 +20,10 @@ pycdc.sln
 *.vcxproj
 *.vcxproj.filters
 bytes/*.cpp
-tests/MyTests/*/*.pyc
-tests/*/*.bytecode
-tests/temp/*
+tests/**/*.bytecode
+tests/temp/
 tests/compiled
-tests/tests_out
-tests/**/tests_out_versions
+tests/decompiled
 
 # User-specific files
 *.rsuser

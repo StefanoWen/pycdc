@@ -7,7 +7,7 @@ test_files=( "$srcdir"/tests/tokenized/*.txt )
 for tf in "${test_files[@]}"; do
     test_name="$(basename "$tf")"
     test_name="${test_name%.txt}"
-    "$srcdir"/tests/decompyle_test.sh $test_name tests_out || test_status=1
+    "$srcdir"/tests/decompyle_test.sh $test_name decompiled || test_status=1
 done
 
 exit $test_status

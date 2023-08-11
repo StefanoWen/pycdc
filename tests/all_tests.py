@@ -8,6 +8,7 @@ import glob
 import shutil
 import sys
 import re
+import time
 
 debug = False
 old = False
@@ -30,15 +31,16 @@ def print_start():
 	print('Starting TESTS...')
 	print('======================')
 
-def call_compile(input_files_dir, tests_out_versions_dir):
-	compile = Compile.Compile(input_files_dir=input_files_dir.absolute(),
-								tests_out_versions_dir=tests_out_versions_dir.absolute(),
+def call_compile(input_dir, compiled_dir):
+	compile = Compile.Compile(input_dir=input_dir.absolute(),
+								compiled_dir=compiled_dir.absolute(),
 								ver=ver,
 								file_basename_exp=file_basename_exp)
 	compile.compile_all()
 
-def call_decompile(tests_out_versions_dir):
-	decompile = Decompile.Decompile(tests_out_versions_dir=tests_out_versions_dir.absolute(),
+def call_decompile(compiled_dir, decompiled_dir):
+	decompile = Decompile.Decompile(input_dir=compiled_dir.absolute(),
+									decompiled_dir=decompiled_dir.absolute(),
 									old=old,
 									ver=ver,
 									file_basename_exp=file_basename_exp)
@@ -123,9 +125,9 @@ def main():
 	global max_align_need
 	global source_files_contents
 	
-	input_files_dir = Path('./input/')
-	input_files_dir_exp = str(input_files_dir / (file_basename_exp + '.py'))
-	input_files = glob.glob(input_files_dir_exp)
+	input_dir = Path('./input/')
+	input_dir_exp = str(input_dir / (file_basename_exp + '.py'))
+	input_files = glob.glob(input_dir_exp)
 	if not input_files:
 		print('No input files matched expression.')
 		return
@@ -134,9 +136,10 @@ def main():
 	max_align_need = len(max(input_files, key=len))
 	source_files_contents = {}
 	
-	tests_out_versions_dir = Path('./tests_out_versions/')
-	call_compile(input_files_dir, tests_out_versions_dir)
-	call_decompile(tests_out_versions_dir)
+	compiled_dir = Path('./compiled/')
+	call_compile(input_dir, compiled_dir)
+	decompiled_dir = Path('./decompiled/')
+	call_decompile(compiled_dir, decompiled_dir)
 	
 	python_versions_dir = MyUtil.get_python_versions_dir()
 	if ver:
@@ -153,7 +156,7 @@ def main():
 		
 		for source_file in input_files:
 			source_file = Path(source_file)
-			decompiled_source_path = (tests_out_versions_dir / py_ver / source_file.name)
+			decompiled_source_path = decompiled_dir / (source_file.stem + '_%s' % py_ver + '.py')
 			if check_failed(source_file, decompiled_source_path):
 				continue
 			MyUtil.print_info('+', 'Succeeded', source_file.name, max_align_need)
