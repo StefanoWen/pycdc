@@ -11,11 +11,16 @@ WHITE_COLOR = 'white'
 LRED_COLOR = 'light_red'
 LGREEN_COLOR = 'light_green'
 LYELLOW_COLOR = 'light_yellow'
+LBLUE_COLOR = 'light_blue'
 LCYAN_COLOR = 'light_cyan'
-RED_COLOR = LRED_COLOR
-GREEN_COLOR = LGREEN_COLOR
+LMAGENTA_COLOR = 'light_magenta'
+
+RED_COLOR = 'red'
+GREEN_COLOR = 'green'
 YELLOW_COLOR = 'yellow'
+BLUE_COLOR = 'blue'
 CYAN_COLOR = 'cyan'
+MAGENTA_COLOR = 'magenta'
 
 def run_cmd(cmd, with_output=False, with_err=False):
 	proc = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
@@ -44,13 +49,17 @@ def my_colored(str, color, *args, **kwargs):
 	else:
 		return str
 
-def print_info(indicate_char, info, head, max_align, color=WHITE_COLOR):
-	print('[{}] {} {}--> {}'.format(
-		indicate_char*2, 
-		head, 
-		'-'*(max_align - len(head)),
-		my_colored(info, color)))
-	
+def print_info(indicate_char, info, head='', max_align='', color=WHITE_COLOR):
+	if head and max_align:
+		print('[{}] {} {}--> {}'.format(
+			indicate_char*2, 
+			head, 
+			'-'*(max_align - len(head)),
+			my_colored(info, color)))
+	else:
+		print('[{}] {}'.format(
+			indicate_char*2, 
+			my_colored(info, color)))
 
 def start_print_same_line(filename):
 	sys.stdout.write(filename)
@@ -167,7 +176,7 @@ def decompile(compiled_dir, decompiled_dir, versions, file_basename_exp, pycdc_p
 def check_error0(source_file, decompiled_source_file_first_line, decompiled_source_file_after_first_line):
 	if decompiled_source_file_first_line.startswith('#ERROR0'):
 		if quiet_level < 2:
-			print_info('-', 'Failed (pycdc crashed in runtime)', source_file.name, max_align_need, RED_COLOR)
+			print_info('-', 'Failed (pycdc crashed in runtime)', source_file.name, max_align_need, LRED_COLOR)
 			if debug:
 				print('-----------------')
 				print(decompiled_source_file_after_first_line)
@@ -178,7 +187,7 @@ def check_error0(source_file, decompiled_source_file_first_line, decompiled_sour
 def check_error1(source_file, decompiled_source_file_first_line, decompiled_source_file_after_first_line):
 	if decompiled_source_file_first_line.startswith('#ERROR1'):
 		if quiet_level < 2:
-			print_info('-', 'Failed (Unsupported / Warning, etc.)', source_file.name, max_align_need, RED_COLOR)
+			print_info('-', 'Failed (Unsupported / Warning, etc.)', source_file.name, max_align_need, LRED_COLOR)
 			if debug:
 				print('-----------------')
 				print(decompiled_source_file_after_first_line)
@@ -203,7 +212,7 @@ def check_stdout_failed(source_file, decompiled_source_file_contents):
 	
 	if source_files_contents[source_file.name] != decompiled_source_file_contents:
 		if quiet_level < 2:
-			print_info('-', 'Failed (Different stdout)', source_file.name, max_align_need, YELLOW_COLOR)
+			print_info('-', '%s %s' % (my_colored('Failed', LRED_COLOR), my_colored('(Different stdout)', LMAGENTA_COLOR)), source_file.name, max_align_need)
 			# putting a lot of prints so i can switch to .encode() easily
 			if debug:
 				print('-----------------')
@@ -227,51 +236,59 @@ def check_failed(source_file, decompiled_source_path):
 	return False
 
 def print_summary(version_to_decompiled_count, input_files_count):
-	print('Summary:')
-	version_format = 'Version %s.%s'
-	max_align_need = len(version_format % ('1', '11'))
-	versions_succeeded = 0
-	for (py_major_ver, py_minor_ver), decompiled_count in version_to_decompiled_count.items():
-		if decompiled_count == input_files_count:
-			indicate_char = '+'
-			info_str = 'Passed'
-			color = GREEN_COLOR
-			versions_succeeded += 1
-		elif decompiled_count > 0:
-			indicate_char = '*'
-			info_str = 'Partially passed'
-			color = YELLOW_COLOR
-		else:
-			indicate_char = '-'
-			info_str = 'Failed'
-			color = RED_COLOR
-		if quiet_level < 3:
+	versions_passed = 0
+	versions_partially_passed = 0
+	if quiet_level < 3:
+		print('Each Version Summary:')
+		version_format = 'Version %s.%s'
+		max_align_need = len(version_format % ('1', '11'))
+		for (py_major_ver, py_minor_ver), decompiled_count in version_to_decompiled_count.items():
+			if decompiled_count == input_files_count:
+				indicate_char = '+'
+				info_str = 'Passed'
+				color = LGREEN_COLOR
+				versions_passed += 1
+			elif decompiled_count > 0:
+				indicate_char = '*'
+				info_str = 'Partially passed'
+				color = YELLOW_COLOR
+				versions_partially_passed += 1
+			else:
+				indicate_char = '-'
+				info_str = 'Failed'
+				color = LRED_COLOR
 			print_info(indicate_char, info_str + ' (%d out of %d tests)' % (decompiled_count, input_files_count), version_format % (py_major_ver, py_minor_ver), max_align_need, color=color)
-	print()
-	versions_count = len(version_to_decompiled_count)
-	if versions_succeeded == versions_count:
-		indicate_char = '+'
-		info_str = 'PASSED ALL'
-		color = GREEN_COLOR
-	elif versions_succeeded > 0:
-		indicate_char = '*'
-		info_str = 'Partially passed' + ' (%d out of %d versions)' % (versions_succeeded, versions_count)
-		color = YELLOW_COLOR
+		print()
 	else:
-		indicate_char = '+'
-		info_str = 'FAILED ALL'
-		color = RED_COLOR
-	print_info(indicate_char, info_str, 'Versions', 1, color=color)
+		for decompiled_count in version_to_decompiled_count.values():
+			if decompiled_count == input_files_count:
+				versions_passed += 1
+			elif decompiled_count > 0:
+				versions_partially_passed += 1
+	versions_count = len(version_to_decompiled_count)
+	print('Versions Summary: (%s versions)' % my_colored(str(versions_count), LCYAN_COLOR))
+	if versions_passed == versions_count:
+		print_info('+', 'PASSED ALL', color=LGREEN_COLOR)
+	elif versions_partially_passed:
+		print_info('*', 'Partially passed %d' % versions_partially_passed, color=YELLOW_COLOR)
+		print_info('+', 'Passed %d' % versions_passed, color=LGREEN_COLOR)
+		print_info('-', 'Failed %d' % (versions_count - versions_passed - versions_partially_passed), color=LRED_COLOR)
+	else:
+		print_info('-', 'FAILED ALL', color=LRED_COLOR)
+
+def get_sys_args_and_kwargs():
+	kwargs = {}
+	args = []
+	if len(sys.argv) > 1:
+		for arg in sys.argv[1:]:
+			if '=' in arg:
+				key, value = arg.split('=', 1)
+				kwargs[key] = value
+			else:
+				args.append(arg)
+	return args, kwargs
 
 def init_and_get_args():
-	global debug
-	debug = False
-	global quiet_level
-	quiet_level = 0
-	global with_color
-	with_color = True
-	old_str = ''
-	file_basename_exp = '*'
 	versions = {
 		'3': ['0',
 		'1',
@@ -286,24 +303,36 @@ def init_and_get_args():
 		'10',
 		#'11'
 		]}
-	if len(sys.argv) > 1:
-		for arg in sys.argv[1:]:
-			if arg == 'debug':
-				debug = True
-			elif arg == 'old':
-				old_str = '_old'
-			elif arg.count('q') == len(arg):
-				quiet_level = len(arg)
-			elif arg == 'noc':
-				with_color = False
-			elif arg.startswith('exp='):
-				file_basename_exp = arg.split('=', 1)[1]
-				file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
-			elif arg.isdigit():
-				if arg[0] not in versions or arg[1:] not in versions[arg[0]]:
-					print_error_and_exit('[-] Version not supported')
-				else:
-					versions = {arg[0]: [arg[1:]]}
+	
+	global debug
+	debug = False
+	global quiet_level
+	quiet_level = 0
+	global with_color
+	with_color = True
+	old_str = ''
+	file_basename_exp = '*'
+	decompile_without_test = False
+	compile_without_test = False
+	args, kwargs = get_sys_args_and_kwargs()
+	for arg in args:
+		if arg == 'debug':
+			debug = True
+		elif arg == 'old':
+			old_str = '_old'
+		elif arg.count('q') == len(arg):
+			quiet_level = len(arg)
+		elif arg == 'noc':
+			with_color = False
+		elif arg.isdigit():
+			if arg[0] not in versions or arg[1:] not in versions[arg[0]]:
+				print_error_and_exit('[-] Version not supported')
+			else:
+				versions = {arg[0]: [arg[1:]]}
+	for arg_name, arg_value in kwargs.items():
+		if arg_name == 'exp':
+			file_basename_exp = arg_value
+			file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
 	
 	if with_color:
 		global colored
@@ -354,7 +383,7 @@ def main():
 				if check_failed(source_file, decompiled_source_path):
 					continue
 				if quiet_level < 2:
-					print_info('+', 'Succeeded', source_file.name, max_align_need, GREEN_COLOR)
+					print_info('+', 'Succeeded', source_file.name, max_align_need, LGREEN_COLOR)
 				version_to_decompiled_count[(py_major_ver, py_minor_ver)] += 1
 			if quiet_level < 2:
 				print()
