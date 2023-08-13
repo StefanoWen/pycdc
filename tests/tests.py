@@ -68,8 +68,7 @@ def end_print_same_line(filename_len):
 def print_start(file_basename_exp):
 	print('======================')
 	print('Starting TESTS...')
-	if file_basename_exp != '*':
-		print('Files expression: < %s >' % colored(file_basename_exp, CYAN_COLOR))
+	print('Files expression: < %s >' % colored(file_basename_exp, CYAN_COLOR))
 	print('======================')
 
 def create_dir_if_not_exists(dir_path):
@@ -265,8 +264,8 @@ def print_summary(version_to_decompiled_count, input_files_count):
 	if versions_passed == versions_count:
 		print_info('+', 'PASSED ALL', color=LGREEN_COLOR)
 	elif versions_partially_passed:
-		to_print_list = [('*', 'Partially passed', versions_partially_passed, YELLOW_COLOR),
-			('+', 'Passed', versions_passed, LGREEN_COLOR),
+		to_print_list = [('+', 'Passed', versions_passed, LGREEN_COLOR),
+			('*', 'Partially passed', versions_partially_passed, YELLOW_COLOR),
 			('-', 'Failed', versions_failed, LRED_COLOR)]
 		for indicate_char, status, count, color in to_print_list:
 			print_info(indicate_char, status + ' (%d / %d)' % (count, versions_count), color=color)
