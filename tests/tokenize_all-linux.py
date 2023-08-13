@@ -1,9 +1,23 @@
 #!/bin/python3
 
-from MyTests.MyUtil import run_cmd
+from subprocess import Popen, PIPE
 import glob
 from pathlib import Path
 import os
+
+def run_cmd(cmd, with_output=False, with_err=False):
+	proc = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
+	cmd_stdout, cmd_stderr = proc.communicate()
+	cmd_stdout = cmd_stdout.decode().replace('\r', '')
+	cmd_stderr = cmd_stderr.decode().replace('\r', '')
+	if with_err and with_output:
+		return cmd_stdout, cmd_stderr, proc.returncode
+	elif with_err:
+		return cmd_stderr, proc.returncode
+	elif with_output:
+		return cmd_stdout
+	else:
+		return None
 
 if not os.path.isdir('./tokenized/'):
 	os.makedirs('./tokenized/')
