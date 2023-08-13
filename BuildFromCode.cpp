@@ -2350,6 +2350,29 @@ void BuildFromCode::switchOpcode()
 		}
 	}
 	break;
+	case Pyc::SWAP_A:
+	{
+		if (operand > 0)
+		{
+			std::list<PycRef<ASTNode>> values_between;
+			PycRef<ASTNode> tos_to_swap = stack.top();
+			stack.pop();
+			for (int i = 0; i < operand - 1; i++)
+			{
+				values_between.push_back(stack.top());
+				stack.pop();
+			}
+			values_between.push_front(stack.top());
+			stack.pop();
+			stack.push(tos_to_swap);
+			for (int i = 0; i < operand - 1; i++)
+			{
+				stack.push(values_between.back());
+				values_between.pop_back();
+			}
+		}
+	}
+	break;
 	case Pyc::SETUP_EXCEPT_A:
 	{
 		if (curblock->blktype() == ASTBlock::BLK_CONTAINER) {
