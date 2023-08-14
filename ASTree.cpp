@@ -428,7 +428,20 @@ void ASTree::print_src(PycRef<ASTNode> node)
 		if (blk->blktype() == ASTBlock::BLK_ELSE && blk->size() == 0)
 			break;
 
-		if (blk->blktype() == ASTBlock::BLK_CONTAINER) {
+		if (blk->blktype() == ASTBlock::BLK_TRY_EXCEPT || blk->blktype() == ASTBlock::BLK_TRY_FINALLY) {
+			if (blk->blktype() == ASTBlock::BLK_TRY_FINALLY)
+			{
+				// if the try-finally has only try-except inside its try,
+				// then turn it into a try-except-finally,
+				PycRef<ASTBlock> tryBlock = blk->nodes().begin()->cast<ASTBlock>();
+				if (tryBlock->hasOnlyBlockOf(ASTBlock::BLK_TRY_EXCEPT))
+				{
+					// extract inner of try (inner is try-except)
+					blk->extractInnerOfFirstBlock();
+					// extract inner of try-except (inner is try, except(s), else(?))
+					blk->extractInnerOfFirstBlock();
+				}
+			}
 			end_line();
 			print_block(blk);
 			end_line();
@@ -452,10 +465,14 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			pyc_output << " in ";
 			print_src(blk.cast<ASTIterBlock>()->iter());
 		}
-		else if (blk->blktype() == ASTBlock::BLK_EXCEPT &&
-			blk.cast<ASTCondBlock>()->cond() != NULL) {
+		else if (blk->blktype() == ASTBlock::BLK_EXCEPT)
+			if(blk.cast<ASTExceptBlock>()->exceptType() != NULL) {
 			pyc_output << " ";
-			print_src(blk.cast<ASTCondBlock>()->cond());
+			print_src(blk.cast<ASTExceptBlock>()->exceptType());
+			if (blk.cast<ASTExceptBlock>()->exceptAs() != NULL) {
+				pyc_output << " as ";
+				print_src(blk.cast<ASTExceptBlock>()->exceptAs());
+			}
 		}
 		else if (blk->blktype() == ASTBlock::BLK_WITH) {
 			pyc_output << " ";

@@ -578,7 +578,8 @@ public:
 
 	enum BlkType {
 		BLK_MAIN, BLK_IF, BLK_ELSE, BLK_ELIF, BLK_TRY,
-		BLK_CONTAINER, BLK_EXCEPT, BLK_FINALLY, BLK_DUPLICATED_FINALLY, 
+		BLK_TRY_FINALLY, BLK_TRY_EXCEPT, BLK_EXCEPT,
+		BLK_ELSE_OF_EXCEPT, BLK_FINALLY, BLK_NO_OP_FINALLY,
 		BLK_WHILE, BLK_FOR, BLK_WITH, BLK_ASYNCFOR
 	};
 
@@ -591,6 +592,9 @@ public:
 	list_t::size_type size() const { return m_nodes.size(); }
 	void removeFirst();
 	void removeLast();
+	void extractInnerOfFirstBlock();
+	void moveNodesFromAnother(PycRef<ASTBlock> otherBlock);
+	bool hasOnlyBlockOf(BlkType blktype);
 	void append(PycRef<ASTNode> node) { m_nodes.emplace_back(std::move(node)); }
 	const char* type_str() const;
 
@@ -628,7 +632,6 @@ private:
 	bool m_negative;
 };
 
-
 class ASTIterBlock : public ASTBlock {
 public:
 	ASTIterBlock(ASTBlock::BlkType blktype, int start, int end, PycRef<ASTNode> iter)
@@ -652,22 +655,61 @@ private:
 	int m_start;
 };
 
-class ASTContainerBlock : public ASTBlock {
+// TODO: change try finally and try except to ASTNode instead of ASTBlock
+class ASTTryFinallyBlock : public ASTBlock
+{
 public:
-	ASTContainerBlock(int finally, int except = 0)
-		: ASTBlock(ASTBlock::BLK_CONTAINER, 0), m_finally(finally), m_except(except) { }
+	ASTTryFinallyBlock(int finallyStart)
+		: ASTBlock(ASTBlock::BLK_TRY_FINALLY, 0),
+		m_finallyStart(finallyStart) {}
 
-	bool hasFinally() const { return m_finally != 0; }
-	bool hasExcept() const { return m_except != 0; }
-	int finally() const { return m_finally; }
-	int except() const { return m_except; }
-
-	void setExcept(int except) { m_except = except; }
-	void setFinally(int finally) { m_finally = finally; }
+	int getFinallyStart() const { return m_finallyStart; }
 
 private:
-	int m_finally;
-	int m_except;
+	int m_finallyStart;
+};
+
+class ASTTryExceptBlock : public ASTBlock {
+public:
+	ASTTryExceptBlock(int exceptStart)
+		: ASTBlock(ASTBlock::BLK_TRY_EXCEPT, 0),
+		m_exceptStart(exceptStart),
+		m_elseStart(0), m_elseEnd(0) {}
+
+	bool hasElseStart() const { return m_elseStart != 0; }
+	bool isElseStartNotElseEnd() const { return m_elseStart != m_elseEnd; }
+
+	int getExceptStart() const { return m_exceptStart; }
+	int getElseStart() const { return m_elseStart; }
+	int getElseEnd() const { return m_elseEnd; }
+
+	void setElseStart(int elseStart) { m_elseStart = elseStart; }
+	void setElseEnd(int elseEnd) { m_elseEnd = elseEnd; }
+
+private:
+	int m_exceptStart;
+	int m_elseStart;
+	int m_elseEnd;
+};
+
+class ASTExceptBlock : public ASTBlock
+{
+public:
+	ASTExceptBlock()
+		: ASTBlock(ASTBlock::BLK_EXCEPT, 0),
+		m_exceptType(NULL), m_exceptAs(NULL)
+	{
+	}
+
+	PycRef<ASTNode> exceptType() const { return m_exceptType; }
+	PycRef<ASTNode> exceptAs() const { return m_exceptAs; }
+
+	void setExceptType(PycRef<ASTNode> exceptType) { m_exceptType = std::move(exceptType); }
+	void setExceptAs(PycRef<ASTNode> exceptAs) { m_exceptAs = std::move(exceptAs); }
+
+private:
+	PycRef<ASTNode> m_exceptType;
+	PycRef<ASTNode> m_exceptAs;
 };
 
 class ASTWithBlock : public ASTBlock {
