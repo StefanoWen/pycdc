@@ -592,6 +592,7 @@ public:
 	list_t::size_type size() const { return m_nodes.size(); }
 	void removeFirst();
 	void removeLast();
+	void removeSecond();
 	void extractInnerOfFirstBlock();
 	void moveNodesFromAnother(PycRef<ASTBlock> otherBlock);
 	bool hasOnlyBlockOf(BlkType blktype);

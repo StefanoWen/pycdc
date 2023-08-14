@@ -197,6 +197,13 @@ void ASTBlock::removeLast()
     m_nodes.erase(it);
 }
 
+void ASTBlock::removeSecond()
+{
+	list_t::iterator it = m_nodes.begin();
+	++it;
+	m_nodes.erase(it);
+}
+
 void ASTBlock::extractInnerOfFirstBlock()
 {
 	list_t first_block_nodes = std::move(m_nodes.begin()->cast<ASTBlock>()->m_nodes);

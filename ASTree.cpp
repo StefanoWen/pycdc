@@ -432,7 +432,9 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			if (blk->blktype() == ASTBlock::BLK_TRY_FINALLY)
 			{
 				// if the try-finally has only try-except inside its try,
-				// then turn it into a try-except-finally,
+				// then extract the contents of the try-except
+				// so prints it has try-except-finally instead of try-{try-except}-finally
+				// has the same logic
 				PycRef<ASTBlock> tryBlock = blk->nodes().begin()->cast<ASTBlock>();
 				if (tryBlock->hasOnlyBlockOf(ASTBlock::BLK_TRY_EXCEPT))
 				{
@@ -466,12 +468,27 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			print_src(blk.cast<ASTIterBlock>()->iter());
 		}
 		else if (blk->blktype() == ASTBlock::BLK_EXCEPT)
-			if(blk.cast<ASTExceptBlock>()->exceptType() != NULL) {
-			pyc_output << " ";
-			print_src(blk.cast<ASTExceptBlock>()->exceptType());
-			if (blk.cast<ASTExceptBlock>()->exceptAs() != NULL) {
-				pyc_output << " as ";
-				print_src(blk.cast<ASTExceptBlock>()->exceptAs());
+		{
+			// if the block has only try-finally then convert it,
+			// its just a cleanup finally but it has the same logic
+			if (blk->hasOnlyBlockOf(ASTBlock::BLK_TRY_FINALLY))
+			{
+				// extract inner of try-finally (inner is try, finally)
+				blk->extractInnerOfFirstBlock();
+				// remove finally
+				blk->removeSecond();
+				// extract inner of try
+				blk->extractInnerOfFirstBlock();
+			}
+			if (blk.cast<ASTExceptBlock>()->exceptType() != NULL)
+			{
+				pyc_output << " ";
+				print_src(blk.cast<ASTExceptBlock>()->exceptType());
+				if (blk.cast<ASTExceptBlock>()->exceptAs() != NULL)
+				{
+					pyc_output << " as ";
+					print_src(blk.cast<ASTExceptBlock>()->exceptAs());
+				}
 			}
 		}
 		else if (blk->blktype() == ASTBlock::BLK_WITH) {
