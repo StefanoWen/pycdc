@@ -2351,11 +2351,7 @@ void BuildFromCode::switchOpcode()
 		PycRef<ASTBlock> tryExceptBlock = new ASTTryExceptBlock(pos + operand);
 		blocks.push(tryExceptBlock.cast<ASTBlock>());
 
-		/* Store the current stack for the except/finally statement(s) */
-		stack_hist.push(stack);
-		PycRef<ASTBlock> tryblock = new ASTBlock(ASTBlock::BLK_TRY, 0, true);
-		blocks.push(tryblock.cast<ASTBlock>());
-		curblock = blocks.top();
+		this->add_try_block();
 	}
 	break;
 	case Pyc::SETUP_FINALLY_A:
@@ -2379,11 +2375,7 @@ void BuildFromCode::switchOpcode()
 			curblock = blocks.top();
 		}
 
-		/* Store the current stack for the except/finally statement(s) */
-		stack_hist.push(stack);
-		PycRef<ASTBlock> tryblock = new ASTBlock(ASTBlock::BLK_TRY, 0, true);
-		blocks.push(tryblock.cast<ASTBlock>());
-		curblock = blocks.top();
+		this->add_try_block();
 	}
 	break;
 	case Pyc::BEGIN_FINALLY:
@@ -2979,6 +2971,7 @@ void BuildFromCode::end_finally()
 		if (curblock.cast<ASTTryExceptBlock>()->isElseStartNotElseEnd())
 		{
 			PycRef<ASTBlock> elseOfExceptBlock = new ASTBlock(ASTBlock::BLK_ELSE_OF_EXCEPT, curblock.cast<ASTTryExceptBlock>()->getElseEnd());
+			elseOfExceptBlock->init();
 			blocks.push(elseOfExceptBlock);
 			curblock = blocks.top();
 		}
@@ -2990,6 +2983,14 @@ void BuildFromCode::end_finally()
 			this->pop_try_except_or_try_finally_block();
 		}
 	}
+}
+
+void BuildFromCode::add_try_block()
+{
+	stack_hist.push(stack);
+	PycRef<ASTBlock> tryblock = new ASTBlock(ASTBlock::BLK_TRY, 0, true);
+	blocks.push(tryblock.cast<ASTBlock>());
+	curblock = blocks.top();
 }
 
 void BuildFromCode::add_finally_block()

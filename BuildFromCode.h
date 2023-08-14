@@ -34,6 +34,7 @@ private:
 	void checker();
 	void switchOpcode();
 	void end_finally();
+	void add_try_block();
 	void add_finally_block();
 	void add_except_block();
 	void pop_except();
