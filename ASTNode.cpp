@@ -204,6 +204,16 @@ void ASTBlock::removeSecond()
 	m_nodes.erase(it);
 }
 
+PycRef<ASTBlock> ASTBlock::getFirstBlock() const
+{
+	return m_nodes.begin()->cast<ASTBlock>();
+}
+
+PycRef<ASTBlock> ASTBlock::getSecondBlock() const
+{
+	return (m_nodes.begin()++)->cast<ASTBlock>();
+}
+
 void ASTBlock::extractInnerOfFirstBlock()
 {
 	list_t first_block_nodes = std::move(m_nodes.begin()->cast<ASTBlock>()->m_nodes);

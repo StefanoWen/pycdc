@@ -70,8 +70,7 @@ public:
 	PycRef<PycString> qualName() const { return m_qualName; }
 	int firstLine() const { return m_firstLine; }
 	PycRef<PycString> lnTable() const { return m_lnTable; }
-	PycRef<PycString> exceptTable() const { return m_exceptTable; }
-	std::vector<ExceptTableEntry> exceptTableEntries() const { return m_exceptTableEntries; }
+	std::vector<ExceptTableEntry> exceptTableVector() const { return m_exceptTableVector; }
 
 	PycRef<PycObject> getConst(int idx) const
 	{
@@ -113,12 +112,12 @@ private:
 	int m_firstLine;
 	PycRef<PycString> m_lnTable;
 	PycRef<PycString> m_exceptTable;
-	std::vector<ExceptTableEntry> m_exceptTableEntries;
+	std::vector<ExceptTableEntry> m_exceptTableVector;
 	globals_t m_globalsUsed; /* Global vars used in this code */
 
 	unsigned char nextByte(std::string::const_iterator& it, const std::string::iterator& end) const;
 	unsigned int parseVarInt(std::string::const_iterator& it, const std::string::iterator& end) const;
-	void initExceptTableEntries();
+	void initExceptTableVector();
 };
 
 #endif

@@ -22,6 +22,21 @@ BLUE_COLOR = 'blue'
 CYAN_COLOR = 'cyan'
 MAGENTA_COLOR = 'magenta'
 
+versions = {
+		'3': ['0',
+		'1',
+		'2',
+		'3',
+		'4',
+		'5',
+		'6',
+		'7',
+		'8',
+		'9',
+		'10',
+		'11'
+		]}
+
 def run_cmd(cmd, with_output=False, with_err=False):
 	proc = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 	cmd_stdout, cmd_stderr = proc.communicate()
@@ -75,7 +90,7 @@ def create_dir_if_not_exists(dir_path):
 	if not os.path.isdir(dir_path):
 		os.makedirs(dir_path)
 
-def compile(input_dir, compiled_dir, versions, file_basename_exp):
+def compile(input_dir, compiled_dir, file_basename_exp):
 	def get_python_versions_dir():
 		return Path(run_cmd('where python', True).split('\n')[0]).parent.parent
 	
@@ -124,7 +139,7 @@ def compile(input_dir, compiled_dir, versions, file_basename_exp):
 	if os.path.isdir(pycache_dir):
 		os.rmdir(pycache_dir)
 
-def decompile(compiled_dir, decompiled_dir, versions, file_basename_exp, pycdc_path):
+def decompile(compiled_dir, decompiled_dir, file_basename_exp, pycdc_path):
 	def get_decompiled_output(pyc_file):
 		cmd_in = '"{}" "{}"'.format(pycdc_path, pyc_file)
 		cmd_out, cmd_err, retcode = run_cmd(cmd_in, True, True)
@@ -285,21 +300,7 @@ def get_sys_args_and_kwargs():
 	return args, kwargs
 
 def init_and_get_args():
-	versions = {
-		'3': ['0',
-		'1',
-		'2',
-		'3',
-		'4',
-		'5',
-		'6',
-		'7',
-		'8',
-		'9',
-		'10',
-		#'11'
-		]}
-	
+	global versions
 	global debug
 	debug = False
 	global quiet_level
@@ -342,13 +343,13 @@ def init_and_get_args():
 		just_fix_windows_console()
 	
 	pycdc_path = run_cmd('where pycdc%s' % old_str, True).split('\n')[0]
-	return file_basename_exp, pycdc_path, versions
+	return file_basename_exp, pycdc_path
 
 def main():
 	global max_align_need
 	global source_files_contents
 	
-	file_basename_exp, pycdc_path, versions = init_and_get_args()
+	file_basename_exp, pycdc_path = init_and_get_args()
 	
 	input_dir = Path('./input/')
 	input_dir_exp = str(input_dir / (file_basename_exp + '.py'))
@@ -363,9 +364,9 @@ def main():
 	source_files_contents = {}
 	
 	compiled_dir = Path('./compiled/')
-	compile(input_dir, compiled_dir, versions, file_basename_exp)
+	compile(input_dir, compiled_dir, file_basename_exp)
 	decompiled_dir = Path('./decompiled/')
-	decompile(compiled_dir, decompiled_dir, versions, file_basename_exp, pycdc_path)
+	decompile(compiled_dir, decompiled_dir, file_basename_exp, pycdc_path)
 	
 	version_to_decompiled_count = {}
 	

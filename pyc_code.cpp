@@ -85,7 +85,7 @@ void PycCode::load(PycData* stream, PycModule* mod)
 	if (mod->verCompare(3, 11) >= 0)
 	{
 		m_exceptTable = LoadObject(stream, mod).cast<PycString>();
-		this->initExceptTableEntries();
+		this->initExceptTableVector();
 	}
 	else
 	{
@@ -122,8 +122,8 @@ unsigned int PycCode::parseVarInt(std::string::const_iterator& it, const std::st
 	return val;
 }
 
-void PycCode::initExceptTableEntries() {
-	std::string exceptTableStr = std::string(this->exceptTable()->strValue());
+void PycCode::initExceptTableVector() {
+	std::string exceptTableStr = std::string(this->m_exceptTable->strValue());
 	std::vector<ExceptTableEntry> exceptTableEntries;
 	std::string::const_iterator it = exceptTableStr.begin();
 	try {
@@ -142,6 +142,6 @@ void PycCode::initExceptTableEntries() {
 		}
 	}
 	catch (const EndOfIteratorException&) {
-		this->m_exceptTableEntries = exceptTableEntries;
+		this->m_exceptTableVector = exceptTableEntries;
 	}
 }

@@ -147,16 +147,16 @@ void output_object(PycRef<PycObject> obj, PycModule* mod, int indent,
             }
 
             if (mod->verCompare(3, 11) >= 0) {
-				if (codeObj->exceptTableEntries().size()) {
+				if (codeObj->exceptTableVector().size()) {
 					iputs(pyc_output, indent + 1, "[Exception Table]\n");
-					for (size_t i = 0; i < codeObj->exceptTableEntries().size(); i++)
+					for (size_t i = 0; i < codeObj->exceptTableVector().size(); i++)
 					{
 						iprintf(pyc_output, indent + 2, "%d to %d -> %d [%d]%s\n",
-							codeObj->exceptTableEntries()[i].start,
-							codeObj->exceptTableEntries()[i].length - 2,
-							codeObj->exceptTableEntries()[i].end,
-							codeObj->exceptTableEntries()[i].depth,
-							(codeObj->exceptTableEntries()[i].lasti) ? " lasti" : "");
+							codeObj->exceptTableVector()[i].start,
+							codeObj->exceptTableVector()[i].length - 2,
+							codeObj->exceptTableVector()[i].end,
+							codeObj->exceptTableVector()[i].depth,
+							(codeObj->exceptTableVector()[i].lasti) ? " lasti" : "");
 					}
 				}
             }

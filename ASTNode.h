@@ -593,6 +593,8 @@ public:
 	void removeFirst();
 	void removeLast();
 	void removeSecond();
+	PycRef<ASTBlock> getFirstBlock() const;
+	PycRef<ASTBlock> getSecondBlock() const;
 	void extractInnerOfFirstBlock();
 	void moveNodesFromAnother(PycRef<ASTBlock> otherBlock);
 	bool hasOnlyBlockOf(BlkType blktype);
@@ -660,8 +662,8 @@ private:
 class ASTTryFinallyBlock : public ASTBlock
 {
 public:
-	ASTTryFinallyBlock(int finallyStart)
-		: ASTBlock(ASTBlock::BLK_TRY_FINALLY, 0),
+	ASTTryFinallyBlock(int finallyStart, bool inited)
+		: ASTBlock(ASTBlock::BLK_TRY_FINALLY, 0, inited),
 		m_finallyStart(finallyStart) {}
 
 	int getFinallyStart() const { return m_finallyStart; }
@@ -673,12 +675,12 @@ private:
 class ASTTryExceptBlock : public ASTBlock {
 public:
 	ASTTryExceptBlock(int exceptStart)
-		: ASTBlock(ASTBlock::BLK_TRY_EXCEPT, 0),
+		: ASTBlock(ASTBlock::BLK_TRY_EXCEPT, 0, true),
 		m_exceptStart(exceptStart),
-		m_elseStart(0), m_elseEnd(0) {}
+		m_elseStart(-1), m_elseEnd(-1) {}
 
-	bool hasElseStart() const { return m_elseStart != 0; }
-	bool isElseStartNotElseEnd() const { return m_elseStart != m_elseEnd; }
+	bool hasElseStart() const { return m_elseStart != -1; }
+	bool isElseStartBelowElseEnd() const { return m_elseStart < m_elseEnd; }
 
 	int getExceptStart() const { return m_exceptStart; }
 	int getElseStart() const { return m_elseStart; }
@@ -696,21 +698,25 @@ private:
 class ASTExceptBlock : public ASTBlock
 {
 public:
-	ASTExceptBlock()
+	ASTExceptBlock(int elseStart)
 		: ASTBlock(ASTBlock::BLK_EXCEPT, 0),
-		m_exceptType(NULL), m_exceptAs(NULL)
+		m_exceptType(NULL), m_exceptAs(NULL),
+		m_elseStart(elseStart)
 	{
 	}
 
 	PycRef<ASTNode> exceptType() const { return m_exceptType; }
 	PycRef<ASTNode> exceptAs() const { return m_exceptAs; }
+	int elseStart() const { return m_elseStart; }
 
 	void setExceptType(PycRef<ASTNode> exceptType) { m_exceptType = std::move(exceptType); }
 	void setExceptAs(PycRef<ASTNode> exceptAs) { m_exceptAs = std::move(exceptAs); }
+	void setElseStart(int elseStart) { m_elseStart = std::move(elseStart); }
 
 private:
 	PycRef<ASTNode> m_exceptType;
 	PycRef<ASTNode> m_exceptAs;
+	int m_elseStart;
 };
 
 class ASTWithBlock : public ASTBlock {
