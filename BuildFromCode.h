@@ -34,8 +34,10 @@ private:
 	void checker();
 	void switchOpcode();
 	void end_finally();
+	void convert_try_finally_to_try_except();
 	void add_try_block();
 	void add_finally_block();
+	void add_no_op_finally_block(int end);
 	void add_except_block();
 	void pop_except();
 	void pop_try_except_or_try_finally_block();
