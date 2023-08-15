@@ -141,7 +141,7 @@ void BuildFromCode::checker()
 			}
 		}
 	}
-	if (curblock->blktype() == ASTBlock::BLK_ELSE_OF_EXCEPT && curblock->end() == curpos)
+	if (curblock->blktype() == ASTBlock::BLK_ELSE && curblock->end() == curpos)
 	{
 		stack = stack_hist.top();
 		stack_hist.pop();
@@ -2968,7 +2968,7 @@ void BuildFromCode::end_finally()
 
 		if (curblock.cast<ASTTryExceptBlock>()->isElseStartNotElseEnd())
 		{
-			PycRef<ASTBlock> elseOfExceptBlock = new ASTBlock(ASTBlock::BLK_ELSE_OF_EXCEPT, curblock.cast<ASTTryExceptBlock>()->getElseEnd());
+			PycRef<ASTBlock> elseOfExceptBlock = new ASTBlock(ASTBlock::BLK_ELSE, curblock.cast<ASTTryExceptBlock>()->getElseEnd());
 			elseOfExceptBlock->init();
 			blocks.push(elseOfExceptBlock);
 			curblock = blocks.top();

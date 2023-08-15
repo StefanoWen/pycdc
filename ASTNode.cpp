@@ -228,14 +228,14 @@ const char* ASTBlock::type_str() const
 {
 	/*
 	BLK_MAIN, BLK_IF, BLK_ELSE, BLK_ELIF, BLK_TRY,
-	BLK_TRY_FINALLY, BLK_TRY_EXCEPT, BLK_EXCEPT,
-	BLK_ELSE_OF_EXCEPT, BLK_FINALLY, BLK_NO_OP_FINALLY,
-	BLK_WHILE, BLK_FOR, BLK_WITH, BLK_ASYNCFOR
+		BLK_TRY_FINALLY, BLK_TRY_EXCEPT, BLK_EXCEPT,
+		BLK_FINALLY, BLK_NO_OP_FINALLY,
+		BLK_WHILE, BLK_FOR, BLK_WITH, BLK_ASYNCFOR
 	*/
     static const char* s_type_strings[] = {
         "", "if", "else", "elif", "try",
 		"TRY_FINALLY", "TRY_EXCEPT", "except",
-        "else", "finally", "NO_OP_FINALLY",
+        "finally", "NO_OP_FINALLY",
 		"while", "for", "with", "async for"
     };
     return s_type_strings[blktype()];
