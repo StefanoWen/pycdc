@@ -8,7 +8,7 @@
 typedef struct ExceptTableEntry {
 	unsigned int start;
 	unsigned int length;
-	unsigned int end;
+	unsigned int target;
 	unsigned int depth;
 	bool lasti;
 } ExceptTableEntry;

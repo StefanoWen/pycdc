@@ -31,6 +31,8 @@ typedef struct Instruction
 class BuildFromCode
 {
 public:
+	typedef std::vector<Pyc::Opcode> OpSeq;
+
 	BuildFromCode(PycRef<PycCode> param_code, PycModule* param_mod);
 	virtual ~BuildFromCode();
 	virtual PycRef<ASTNode> build();
@@ -42,6 +44,8 @@ private:
 	PycRef<ASTNode> StackPopTop();
 	void checkIfExpr();
 	void binary_or_inplace();
+	bool isOpSeqMatch(OpSeq opcodeSequence, bool onlyFirstMatch=false);
+	void exceptionsChecker();
 	void checker();
 	void switchOpcode();
 	void end_finally();
@@ -52,8 +56,10 @@ private:
 	void add_finally_no_op_block(int end);
 	void add_except_block(int elseStart);
 	void add_else_block(int end);
+	void pop_try();
 	void pop_except();
 	void pop_try_except_or_try_finally_block();
+	bool isOpcodeReturn();
 
 	PycRef<PycCode> code;
 	PycModule* mod;

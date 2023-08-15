@@ -154,7 +154,7 @@ void output_object(PycRef<PycObject> obj, PycModule* mod, int indent,
 						iprintf(pyc_output, indent + 2, "%d to %d -> %d [%d]%s\n",
 							codeObj->exceptTableVector()[i].start,
 							codeObj->exceptTableVector()[i].length - 2,
-							codeObj->exceptTableVector()[i].end,
+							codeObj->exceptTableVector()[i].target,
 							codeObj->exceptTableVector()[i].depth,
 							(codeObj->exceptTableVector()[i].lasti) ? " lasti" : "");
 					}

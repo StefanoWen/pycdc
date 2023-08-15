@@ -50,8 +50,15 @@ bool BuildFromCode::getCleanBuild() const
 
 void BuildFromCode::bc_next()
 {
-	bc_i++;
-	this->bc_update();
+	if (bc_i == bc_size)
+	{
+		opcode = Pyc::STOP_CODE;
+	}
+	else
+	{
+		bc_i++;
+		this->bc_update();
+	}
 }
 
 void BuildFromCode::bc_update()
@@ -127,56 +134,69 @@ void BuildFromCode::binary_or_inplace()
 	stack.push(new ASTBinary(left, right, op));
 }
 
-void BuildFromCode::checker()
+bool BuildFromCode::isOpSeqMatch(OpSeq opcodeSequence, bool onlyFirstMatch)
 {
-	if (mod->verCompare(3, 11) >= 0)
+	BcPeeker peekSequence(*this);
+	bool isMatch = !onlyFirstMatch;
+
+	for (OpSeq::iterator it = opcodeSequence.begin(); 
+		it != opcodeSequence.end() && 
+		((isMatch && !onlyFirstMatch) ||
+		(!isMatch && onlyFirstMatch)); ++it)
+	{
+		isMatch = (*it == opcode);
+		peekSequence.peekOne();
+	}
+	return isMatch;
+}
+
+void BuildFromCode::exceptionsChecker()
+{
+	if (!exceptTableStack.empty())
 	{
 		if (curblock->blktype() == ASTBlock::BLK_TRY && curblock->end() == curpos)
 		{
-			blocks.pop();
-			blocks.top()->append(curblock.cast<ASTNode>());
-			curblock = blocks.top();
+			this->pop_try();
+
+			if (this->isOpcodeReturn())
+			{
+				this->convert_try_finally_to_try_except();
+				this->add_except_block(0);
+			}
+			else
+			{
+				this->add_finally_no_op_block(curblock.cast<ASTTryFinallyBlock>()->getFinallyStart());
+			}
 		}
 
-		if (!exceptTableStack.empty())
+		int start = exceptTableStack.top().start;
+		// start of some block
+		if (start == curpos)
 		{
-			int start = exceptTableStack.top().start;
-			// start of some block
-			if (start == pos)
-			{
-				int length = exceptTableStack.top().length;
-				int end = exceptTableStack.top().end;
-				bool depth = exceptTableStack.top().depth;
+			int length = exceptTableStack.top().length;
+			int target = exceptTableStack.top().target;
+			bool depth = exceptTableStack.top().depth;
 
-				exceptTableStack.pop();
-				if (depth)
+			exceptTableStack.pop();
+			if (depth)
+			{
+
+				// finally / except
+				
+			}
+			else if (previous_depth)
+			{
+				// else
+				if (start != length)
 				{
-					/*
-					// finally / except
-					if (opcode == Pyc::JUMP_FORWARD_A)
-					{
-						this->convert_try_finally_to_try_except();
-					}
-					else
-					{
-						this->add_finally_block();
-					}
-					*/
+					this->add_else_block(curpos + length);
 				}
-				else if (previous_depth)
-				{
-					// else
-					if (start != length)
-					{
-						this->add_else_block(pos + length);
-					}
-				}
-				else
-				{
-					// try
-					this->add_try_finally_block(end, false);
-					this->add_try_block(pos + length);
-				}
+			}
+			else
+			{
+				// try
+				this->add_try_finally_block(target, false);
+				this->add_try_block(length);
 			}
 		}
 	}
@@ -192,7 +212,7 @@ void BuildFromCode::checker()
 			{
 				this->add_finally_block();
 			}
-			else 
+			else
 			{
 				bool is_finally = true;
 				if (opcode == Pyc::JUMP_FORWARD_A)
@@ -202,8 +222,7 @@ void BuildFromCode::checker()
 				}
 				else
 				{
-					BcPeeker peekForReturnStmt(*this, 1);
-					if (opcode == Pyc::RETURN_VALUE)
+					if(this->isOpcodeReturn())
 					{
 						is_finally = false;
 						this->convert_try_finally_to_try_except();
@@ -224,25 +243,16 @@ void BuildFromCode::checker()
 			this->pop_try_except_or_try_finally_block();
 		}
 	}
-	else if (curblock->blktype() == ASTBlock::BLK_NO_OP_FINALLY && (curblock->end() == pos || !curblock->inited()))
+	else if (curblock->blktype() == ASTBlock::BLK_NO_OP_FINALLY && curblock->end() == pos)
 	{
 		if (opcode == Pyc::JUMP_FORWARD_A)
 		{
 			this->end_finally();
 		}
-		else
+		else if (this->isOpcodeReturn())
 		{
-			// in version 3.10, in case there is LOAD_CONST(NULL), RETURN_VALUE;
-			// instead of JUMP_FORWARD
-			if (curblock->inited())
-			{
-				curblock->init(false);
-			}
-			else
-			{
-				this->end_finally();
-				this->add_finally_block();
-			}
+			this->end_finally();
+			this->add_finally_block();
 		}
 	}
 	else if (curblock->blktype() == ASTBlock::BLK_EXCEPT)
@@ -277,7 +287,11 @@ void BuildFromCode::checker()
 
 		this->pop_try_except_or_try_finally_block();
 	}
+}
 
+void BuildFromCode::checker()
+{
+	this->exceptionsChecker();
 
 	if (comprehension_counter == 2 && opcode != Pyc::PRECALL_A)
 	{
@@ -321,7 +335,7 @@ void BuildFromCode::checker()
 				}
 
 				// We want to keep the stack the same, but we need to pop
-				// a level off the history. 
+				// a level off the history.
 				// stack = stack_hist.top();
 				if (!stack_hist.empty())
 					stack_hist.pop();
@@ -2067,12 +2081,7 @@ void BuildFromCode::switchOpcode()
 	{
 		if (curblock->blktype() == ASTBlock::BLK_TRY)
 		{
-			stack = stack_hist.top();
-			stack_hist.pop();
-
-			blocks.pop();
-			blocks.top()->append(curblock.cast<ASTNode>());
-			curblock = blocks.top();
+			this->pop_try();
 
 			break;
 		}
@@ -2141,32 +2150,38 @@ void BuildFromCode::switchOpcode()
 			blocks.pop();
 			curblock = blocks.top();
 
-			// pop the try-finally and append it to except block
-			blocks.pop();
-			blocks.top()->append(curblock.cast<ASTNode>());
-			curblock = blocks.top();
-			
-			// move try block nodes to try-finally
-			curblock->extractInnerOfFirstBlock();
-			
-			// move try-finally nodes to except block
-			curblock->extractInnerOfFirstBlock();
-
-			this->pop_except();
-			if (mod->verCompare(3, 9) >= 0)
+			if (mod->verCompare(3, 11) < 0)
 			{
+				// pop the try-finally and append it to except block
+				blocks.pop();
+				blocks.top()->append(curblock.cast<ASTNode>());
+				curblock = blocks.top();
+
+				// move try block nodes to try-finally
+				curblock->extractInnerOfFirstBlock();
+
+				// move try-finally nodes to except block
+				curblock->extractInnerOfFirstBlock();
+
+				this->pop_except();
+				if (mod->verCompare(3, 9) >= 0)
+				{
+					this->add_finally_no_op_block(0);
+				}
 				this->add_finally_no_op_block(0);
 			}
-			this->add_finally_no_op_block(0);
 		}
 		else
 		{
 			this->pop_except();
-			
-			BcPeeker peekForReturnStmt(*this, 2);
-			if (opcode == Pyc::RETURN_VALUE)
+
+			if (this->isOpcodeReturn())
 			{
 				this->pop_try_except_or_try_finally_block();
+				if (mod->verCompare(3, 11) >= 0)
+				{
+					this->add_finally_no_op_block(0);
+				}
 			}
 		}
 	}
@@ -3035,6 +3050,10 @@ void BuildFromCode::end_finally()
 
 		this->pop_try_except_or_try_finally_block();
 	}
+	else if (curblock->blktype() == ASTBlock::BLK_TRY_EXCEPT)
+	{
+		this->pop_try_except_or_try_finally_block();
+	}
 }
 
 void BuildFromCode::convert_try_finally_to_try_except()
@@ -3093,6 +3112,16 @@ void BuildFromCode::add_else_block(int end)
 	curblock = blocks.top();
 }
 
+void BuildFromCode::pop_try()
+{
+	stack = stack_hist.top();
+	stack_hist.pop();
+
+	blocks.pop();
+	blocks.top()->append(curblock.cast<ASTNode>());
+	curblock = blocks.top();
+}
+
 void BuildFromCode::pop_except()
 {
 	// pop and append except to try-except
@@ -3110,4 +3139,10 @@ void BuildFromCode::pop_try_except_or_try_finally_block()
 	blocks.pop();
 	blocks.top()->append(curblock.cast<ASTNode>());
 	curblock = blocks.top();
+}
+
+bool BuildFromCode::isOpcodeReturn()
+{
+	BcPeeker peekReturn(*this, 1);
+	return (opcode == Pyc::RETURN_VALUE);
 }
