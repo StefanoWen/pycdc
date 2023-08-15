@@ -2174,7 +2174,8 @@ void BuildFromCode::switchOpcode()
 		else
 		{
 			this->pop_except();
-
+			
+			BcPeeker peekReturn(*this, 1);
 			if (this->isOpcodeReturn())
 			{
 				this->pop_try_except_or_try_finally_block();
