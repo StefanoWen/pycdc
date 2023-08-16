@@ -389,10 +389,6 @@ PycRef<ASTNode> BuildFromCode::build()
 {
 	while (bc_i < bc_size-1)
 	{
-		if (bc_i == 61)
-		{
-			printf("");
-		}
 		this->checker();
 		
 		this->debug_print();
