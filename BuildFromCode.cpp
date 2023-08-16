@@ -35,7 +35,7 @@ BuildFromCode::BuildFromCode(PycRef<PycCode> param_code, PycModule* param_mod) :
 		bc.push_back(Instruction{ opcode, operand, curpos, pos });
 	}
 	bc.push_back(Instruction{ Pyc::STOP_CODE, 0, 0, 0 });
-	bc_size = bc.size()-1;
+	bc_size = bc.size();
 	this->bc_update();
 }
 
@@ -56,7 +56,7 @@ void BuildFromCode::bc_set(size_t new_bc_i)
 
 void BuildFromCode::bc_next()
 {
-	if (bc_i < bc_size - 1)
+	if (bc_i < bc_size)
 	{
 		this->bc_set(bc_i + 1);
 	}
@@ -343,7 +343,7 @@ void BuildFromCode::checker()
 
 PycRef<ASTNode> BuildFromCode::build()
 {
-	while (bc_i < bc_size)
+	while (bc_i < bc_size-1)
 	{
 #if defined(BLOCK_DEBUG) || defined(STACK_DEBUG)
 		fprintf(stderr, "%-7d", pos);
