@@ -40,6 +40,9 @@ public:
 	virtual PycRef<ASTNode> build();
 	bool getCleanBuild() const;
 private:
+	void print_blocks();
+	void debug_print();
+	void bc_set_print_skipped_blocks(size_t new_bc_i);
 	void bc_set(size_t new_bc_i);
 	void bc_next();
 	void bc_update();
@@ -66,7 +69,7 @@ private:
 	bool isOpSeqMatch(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
 	int getOpSeqMatchIndex(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
 	bool skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0);
-	bool skipCopyPopExceptReraiseIfExists(size_t firstSkipOpcodesNum);
+	bool skipCopyPopExceptIfExists(size_t firstSkipOpcodesNum);
 	bool isOpcodeReturnAfterN(size_t n);
 
 	PycRef<PycCode> code;

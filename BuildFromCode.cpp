@@ -48,10 +48,51 @@ bool BuildFromCode::getCleanBuild() const
 	return this->cleanBuild;
 }
 
+void BuildFromCode::print_blocks()
+{
+	for (unsigned int i = 0; i < blocks.size(); i++)
+		fprintf(stderr, "    ");
+	fprintf(stderr, "%s (%d)", curblock->type_str(), curblock->end());
+}
+
+void BuildFromCode::debug_print()
+{
+#if defined(BLOCK_DEBUG) || defined(STACK_DEBUG)
+	fprintf(stderr, "%-7d", curpos);
+#ifdef STACK_DEBUG
+	fprintf(stderr, "%-5d", (unsigned int)stack_hist.size() + 1);
+#endif
+#ifdef BLOCK_DEBUG
+	this->print_blocks();
+#endif
+	fprintf(stderr, "\n");
+#endif
+}
+
+void BuildFromCode::bc_set_print_skipped_blocks(size_t new_bc_i)
+{
+	bc_i++;
+	this->bc_update();
+	while (bc_i < new_bc_i)
+	{
+		fprintf(stderr, "%-7d", curpos);
+		this->print_blocks();
+		fprintf(stderr, " ** Skipped **");
+		fprintf(stderr, "\n");
+
+		bc_i++;
+		this->bc_update();
+	}
+}
+
 void BuildFromCode::bc_set(size_t new_bc_i)
 {
+#ifdef BLOCK_DEBUG
+	this->bc_set_print_skipped_blocks(new_bc_i);
+#else
 	bc_i = new_bc_i;
 	this->bc_update();
+#endif
 }
 
 void BuildFromCode::bc_next()
@@ -143,6 +184,7 @@ void BuildFromCode::exceptionsChecker()
 		{
 			this->pop_try();
 
+			/*
 			if (this->isOpcodeReturnAfterN(1))
 			{
 				this->convert_try_finally_to_try_except();
@@ -152,6 +194,7 @@ void BuildFromCode::exceptionsChecker()
 			{
 				this->add_finally_no_op_block(curblock.cast<ASTTryFinallyBlock>()->getFinallyStart());
 			}
+			*/
 		}
 
 		int start = exceptTableStack.top().start;
@@ -185,7 +228,8 @@ void BuildFromCode::exceptionsChecker()
 			}
 		}
 	}
-	else if (curblock->blktype() == ASTBlock::BLK_TRY_FINALLY)
+
+	if (curblock->blktype() == ASTBlock::BLK_TRY_FINALLY)
 	{
 		if (curblock->inited())
 		{
@@ -345,21 +389,14 @@ PycRef<ASTNode> BuildFromCode::build()
 {
 	while (bc_i < bc_size-1)
 	{
-#if defined(BLOCK_DEBUG) || defined(STACK_DEBUG)
-		fprintf(stderr, "%-7d", pos);
-#ifdef STACK_DEBUG
-		fprintf(stderr, "%-5d", (unsigned int)stack_hist.size() + 1);
-#endif
-#ifdef BLOCK_DEBUG
-		for (unsigned int i = 0; i < blocks.size(); i++)
-			fprintf(stderr, "    ");
-		fprintf(stderr, "%s (%d)", curblock->type_str(), curblock->end());
-#endif
-		fprintf(stderr, "\n");
-#endif
-
+		if (bc_i == 61)
+		{
+			printf("");
+		}
 		this->checker();
 		
+		this->debug_print();
+
 		try {
 			this->switchOpcode();
 		}
@@ -1659,10 +1696,7 @@ void BuildFromCode::switchOpcode()
 
 			this->add_except_block(curblock.cast<ASTTryExceptBlock>()->getElseStart());
 
-			if (this->skipCopyPopExceptReraiseIfExists(0))
-			{
-				this->pop_try_except_or_try_finally_block();
-			};
+			this->skipCopyPopExceptIfExists(1);
 
 			break;
 		}
@@ -2147,18 +2181,21 @@ void BuildFromCode::switchOpcode()
 			blocks.top()->append(curblock.cast<ASTNode>());
 			curblock = blocks.top();
 
-			// move try block nodes to try-finally
-			curblock->extractInnerOfFirstBlock();
-
-			// move try-finally nodes to except block
-			curblock->extractInnerOfFirstBlock();
-
-			this->pop_except();
-			if (mod->verCompare(3, 9) >= 0)
+			if (mod->verCompare(3, 11) < 0)
 			{
+				// move try block nodes to try-finally
+				curblock->extractInnerOfFirstBlock();
+
+				// move try-finally nodes to except block
+				curblock->extractInnerOfFirstBlock();
+
+				this->pop_except();
+				if (mod->verCompare(3, 9) >= 0)
+				{
+					this->add_finally_no_op_block(0);
+				}
 				this->add_finally_no_op_block(0);
 			}
-			this->add_finally_no_op_block(0);
 		}
 		else
 		{
@@ -2167,7 +2204,7 @@ void BuildFromCode::switchOpcode()
 			if (this->isOpcodeReturnAfterN(2))
 			{
 				this->pop_try_except_or_try_finally_block();
-				this->skipCopyPopExceptReraiseIfExists(3);
+				this->skipCopyPopExceptIfExists(3);
 			}
 		}
 	}
@@ -3041,7 +3078,7 @@ void BuildFromCode::end_finally()
 		this->pop_try_except_or_try_finally_block();
 	}
 
-	this->skipCopyPopExceptReraiseIfExists(0);
+	this->skipCopyPopExceptIfExists(0);
 }
 
 void BuildFromCode::convert_try_finally_to_try_except()

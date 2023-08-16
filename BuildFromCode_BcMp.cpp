@@ -9,16 +9,21 @@ bool BuildFromCode::isOpSeqMatch(OpSeq opcodeSequence, size_t firstSkipOpcodesNu
 
 int BuildFromCode::getOpSeqMatchIndex(OpSeq opcodeSequence, size_t firstSkipOpcodesNum, bool onlyFirstMatch)
 {
-	BcPeeker peekSequence(*this, firstSkipOpcodesNum);
+	BcPeeker peekSequence(*this);
 	bool isMatch = !onlyFirstMatch;
+
+	for (size_t i = 1; i < firstSkipOpcodesNum; i++)
+	{
+		peekSequence.peekOne();
+	}
 
 	for (OpSeq::iterator it = opcodeSequence.begin();
 		it != opcodeSequence.end() &&
 		((isMatch && !onlyFirstMatch) ||
 			(!isMatch && onlyFirstMatch)); ++it)
 	{
-		isMatch = (*it == opcode);
 		peekSequence.peekOne();
+		isMatch = (*it == opcode);
 	}
 	return (isMatch) ? (int)bc_i : -1;
 }
@@ -37,9 +42,9 @@ bool BuildFromCode::skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpco
 	}
 }
 
-bool BuildFromCode::skipCopyPopExceptReraiseIfExists(size_t firstSkipOpcodesNum)
+bool BuildFromCode::skipCopyPopExceptIfExists(size_t firstSkipOpcodesNum)
 {
-	return this->skipOpSeqIfExists(OpSeq{ Pyc::COPY_A , Pyc::POP_EXCEPT , Pyc::RERAISE_A }, firstSkipOpcodesNum);
+	return this->skipOpSeqIfExists(OpSeq{ Pyc::COPY_A, Pyc::POP_EXCEPT }, firstSkipOpcodesNum);
 }
 
 bool BuildFromCode::isOpcodeReturnAfterN(size_t n)
