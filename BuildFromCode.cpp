@@ -56,7 +56,10 @@ void BuildFromCode::bc_set(size_t new_bc_i)
 
 void BuildFromCode::bc_next()
 {
-	this->bc_set(bc_i + 1);
+	if (bc_i < bc_size - 1)
+	{
+		this->bc_set(bc_i + 1);
+	}
 }
 
 void BuildFromCode::bc_update()

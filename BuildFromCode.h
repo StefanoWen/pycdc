@@ -102,14 +102,7 @@ private:
 		}
 		void peekOne()
 		{
-			if (m_buildFromCode.bc_i < m_buildFromCode.bc_size-1)
-			{
-				m_buildFromCode.bc_next();
-			}
-			else
-			{
-				m_buildFromCode.opcode = Pyc::STOP_CODE;
-			}
+			m_buildFromCode.bc_next();
 		}
 		void peekN(size_t n)
 		{
