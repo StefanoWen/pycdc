@@ -27,7 +27,6 @@ BuildFromCode::BuildFromCode(PycRef<PycCode> param_code, PycModule* param_mod) :
 		exceptTableStack.push(*it);
 	}
 	
-	bc.push_back(Instruction{ opcode, operand, curpos, pos });
 	while (!source.atEof())
 	{
 		curpos = pos;
@@ -35,6 +34,7 @@ BuildFromCode::BuildFromCode(PycRef<PycCode> param_code, PycModule* param_mod) :
 
 		bc.push_back(Instruction{ opcode, operand, curpos, pos });
 	}
+	bc.push_back(Instruction{ Pyc::STOP_CODE, 0, 0, 0 });
 	bc_size = bc.size()-1;
 	this->bc_update();
 }
@@ -48,17 +48,15 @@ bool BuildFromCode::getCleanBuild() const
 	return this->cleanBuild;
 }
 
+void BuildFromCode::bc_set(size_t new_bc_i)
+{
+	bc_i = new_bc_i;
+	this->bc_update();
+}
+
 void BuildFromCode::bc_next()
 {
-	if (bc_i == bc_size)
-	{
-		opcode = Pyc::STOP_CODE;
-	}
-	else
-	{
-		bc_i++;
-		this->bc_update();
-	}
+	this->bc_set(bc_i + 1);
 }
 
 void BuildFromCode::bc_update()
@@ -134,31 +132,15 @@ void BuildFromCode::binary_or_inplace()
 	stack.push(new ASTBinary(left, right, op));
 }
 
-bool BuildFromCode::isOpSeqMatch(OpSeq opcodeSequence, bool onlyFirstMatch)
-{
-	BcPeeker peekSequence(*this);
-	bool isMatch = !onlyFirstMatch;
-
-	for (OpSeq::iterator it = opcodeSequence.begin(); 
-		it != opcodeSequence.end() && 
-		((isMatch && !onlyFirstMatch) ||
-		(!isMatch && onlyFirstMatch)); ++it)
-	{
-		isMatch = (*it == opcode);
-		peekSequence.peekOne();
-	}
-	return isMatch;
-}
-
 void BuildFromCode::exceptionsChecker()
 {
-	if (!exceptTableStack.empty())
+	if (mod->verCompare(3, 11) >= 0 && !exceptTableStack.empty())
 	{
 		if (curblock->blktype() == ASTBlock::BLK_TRY && curblock->end() == curpos)
 		{
 			this->pop_try();
 
-			if (this->isOpcodeReturn())
+			if (this->isOpcodeReturnAfterN(1))
 			{
 				this->convert_try_finally_to_try_except();
 				this->add_except_block(0);
@@ -222,7 +204,7 @@ void BuildFromCode::exceptionsChecker()
 				}
 				else
 				{
-					if(this->isOpcodeReturn())
+					if(this->isOpcodeReturnAfterN(1))
 					{
 						is_finally = false;
 						this->convert_try_finally_to_try_except();
@@ -249,7 +231,7 @@ void BuildFromCode::exceptionsChecker()
 		{
 			this->end_finally();
 		}
-		else if (this->isOpcodeReturn())
+		else if (this->isOpcodeReturnAfterN(1))
 		{
 			this->end_finally();
 			this->add_finally_block();
@@ -373,8 +355,6 @@ PycRef<ASTNode> BuildFromCode::build()
 		fprintf(stderr, "\n");
 #endif
 
-		this->bc_next();
-
 		this->checker();
 		
 		try {
@@ -388,6 +368,8 @@ PycRef<ASTNode> BuildFromCode::build()
 			|| (curblock->blktype() == ASTBlock::BLK_IF)
 			|| (curblock->blktype() == ASTBlock::BLK_ELIF))
 			&& (curblock->end() == pos);
+
+		this->bc_next();
 	}
 
 	if (stack_hist.size()) {
@@ -1674,6 +1656,11 @@ void BuildFromCode::switchOpcode()
 
 			this->add_except_block(curblock.cast<ASTTryExceptBlock>()->getElseStart());
 
+			if (this->skipCopyPopExceptReraiseIfExists(0))
+			{
+				this->pop_try_except_or_try_finally_block();
+			};
+
 			break;
 		}
 
@@ -2023,6 +2010,8 @@ void BuildFromCode::switchOpcode()
 
 				// TOS will be a tuple of the parameters names that has the annotations.
 				// Annotations values will start at TOS - 1.
+
+				// TODO: bad cast HERE
 				PycSimpleSequence::value_t paramsAnnotNames = stack.top().cast<ASTObject>()->object().cast<PycTuple>()->values();
 				stack.pop();
 
@@ -2150,39 +2139,32 @@ void BuildFromCode::switchOpcode()
 			blocks.pop();
 			curblock = blocks.top();
 
-			if (mod->verCompare(3, 11) < 0)
+			// pop the try-finally and append it to except block
+			blocks.pop();
+			blocks.top()->append(curblock.cast<ASTNode>());
+			curblock = blocks.top();
+
+			// move try block nodes to try-finally
+			curblock->extractInnerOfFirstBlock();
+
+			// move try-finally nodes to except block
+			curblock->extractInnerOfFirstBlock();
+
+			this->pop_except();
+			if (mod->verCompare(3, 9) >= 0)
 			{
-				// pop the try-finally and append it to except block
-				blocks.pop();
-				blocks.top()->append(curblock.cast<ASTNode>());
-				curblock = blocks.top();
-
-				// move try block nodes to try-finally
-				curblock->extractInnerOfFirstBlock();
-
-				// move try-finally nodes to except block
-				curblock->extractInnerOfFirstBlock();
-
-				this->pop_except();
-				if (mod->verCompare(3, 9) >= 0)
-				{
-					this->add_finally_no_op_block(0);
-				}
 				this->add_finally_no_op_block(0);
 			}
+			this->add_finally_no_op_block(0);
 		}
 		else
 		{
 			this->pop_except();
-			
-			BcPeeker peekReturn(*this, 1);
-			if (this->isOpcodeReturn())
+
+			if (this->isOpcodeReturnAfterN(2))
 			{
 				this->pop_try_except_or_try_finally_block();
-				if (mod->verCompare(3, 11) >= 0)
-				{
-					this->add_finally_no_op_block(0);
-				}
+				this->skipCopyPopExceptReraiseIfExists(3);
 			}
 		}
 	}
@@ -3055,6 +3037,8 @@ void BuildFromCode::end_finally()
 	{
 		this->pop_try_except_or_try_finally_block();
 	}
+
+	this->skipCopyPopExceptReraiseIfExists(0);
 }
 
 void BuildFromCode::convert_try_finally_to_try_except()
@@ -3140,10 +3124,4 @@ void BuildFromCode::pop_try_except_or_try_finally_block()
 	blocks.pop();
 	blocks.top()->append(curblock.cast<ASTNode>());
 	curblock = blocks.top();
-}
-
-bool BuildFromCode::isOpcodeReturn()
-{
-	BcPeeker peekReturn(*this, 1);
-	return (opcode == Pyc::RETURN_VALUE);
 }

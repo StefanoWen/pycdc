@@ -22,6 +22,8 @@ class UnsupportedOpcodeException : public std::exception
 
 typedef struct Instruction
 {
+	Instruction(int new_opcode, int new_operand, int new_curpos, int new_pos) : 
+		opcode(new_opcode), operand(new_operand), curpos(new_curpos), pos(new_pos) {}
 	int opcode = 0;
 	int operand = 0;
 	int curpos = 0;
@@ -38,13 +40,13 @@ public:
 	virtual PycRef<ASTNode> build();
 	bool getCleanBuild() const;
 private:
+	void bc_set(size_t new_bc_i);
 	void bc_next();
 	void bc_update();
 	void append_to_chain_store(const PycRef<ASTNode>& chainStore, PycRef<ASTNode> item);
 	PycRef<ASTNode> StackPopTop();
 	void checkIfExpr();
 	void binary_or_inplace();
-	bool isOpSeqMatch(OpSeq opcodeSequence, bool onlyFirstMatch=false);
 	void exceptionsChecker();
 	void checker();
 	void switchOpcode();
@@ -59,7 +61,13 @@ private:
 	void pop_try();
 	void pop_except();
 	void pop_try_except_or_try_finally_block();
-	bool isOpcodeReturn();
+
+	// bytecode manipulations (BcMp) functions
+	bool isOpSeqMatch(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
+	int getOpSeqMatchIndex(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
+	bool skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0);
+	bool skipCopyPopExceptReraiseIfExists(size_t firstSkipOpcodesNum);
+	bool isOpcodeReturnAfterN(size_t n);
 
 	PycRef<PycCode> code;
 	PycModule* mod;
@@ -77,7 +85,44 @@ private:
 	std::vector<Instruction> bc;
 	size_t bc_size;
 	size_t bc_i;
-	friend class BcPeeker;
+	// guard class for "peeking" the next instruction(s)
+	class BcPeeker
+	{
+	public:
+		BcPeeker(BuildFromCode& buildFromCode, size_t initial_peeks = 0) :
+			m_buildFromCode(buildFromCode)
+		{
+			m_original_bc_i = m_buildFromCode.bc_i;
+			this->peekN(initial_peeks);
+		}
+		~BcPeeker()
+		{
+			m_buildFromCode.bc_i = m_original_bc_i;
+			m_buildFromCode.bc_update();
+		}
+		void peekOne()
+		{
+			if (m_buildFromCode.bc_i < m_buildFromCode.bc_size-1)
+			{
+				m_buildFromCode.bc_next();
+			}
+			else
+			{
+				m_buildFromCode.opcode = Pyc::STOP_CODE;
+			}
+		}
+		void peekN(size_t n)
+		{
+			while (n > 0)
+			{
+				this->peekOne();
+				n--;
+			}
+		}
+	private:
+		size_t m_original_bc_i;
+		BuildFromCode& m_buildFromCode;
+	};
 
 	int unpack;
 	bool else_pop;
@@ -91,38 +136,6 @@ private:
 	std::stack<ExceptTableEntry> exceptTableStack;
 	bool previous_depth;
 	std::stack<bool> previous_depth_stackhist;
-};
-
-// guard class for "peeking" the next instruction(s)
-class BcPeeker
-{
-public:
-	BcPeeker(BuildFromCode& buildFromCode, int initial_peeks = 0) :
-		m_buildFromCode(buildFromCode)
-	{
-		m_original_bc_i = m_buildFromCode.bc_i;
-		this->peekN(initial_peeks);
-	}
-	~BcPeeker()
-	{
-		m_buildFromCode.bc_i = m_original_bc_i;
-		m_buildFromCode.bc_update();
-	}
-	void peekOne()
-	{
-		m_buildFromCode.bc_next();
-	}
-	void peekN(int n)
-	{
-		while (n > 0)
-		{
-			this->peekOne();
-			n--;
-		}
-	}
-private:
-	size_t m_original_bc_i;
-	BuildFromCode& m_buildFromCode;
 };
 
 #endif
