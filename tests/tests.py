@@ -283,7 +283,8 @@ def print_summary(version_to_decompiled_count, input_files_count):
 			('*', 'Partially passed', versions_partially_passed, YELLOW_COLOR),
 			('-', 'Failed', versions_failed, LRED_COLOR)]
 		for indicate_char, status, count, color in to_print_list:
-			print_info(indicate_char, status + ' (%d / %d)' % (count, versions_count), color=color)
+			if count:
+				print_info(indicate_char, status + ' (%d / %d)' % (count, versions_count), color=color)
 	else:
 		print_info('-', 'FAILED ALL', color=LRED_COLOR)
 
