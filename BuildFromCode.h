@@ -40,9 +40,7 @@ public:
 	virtual PycRef<ASTNode> build();
 	bool getCleanBuild() const;
 private:
-	void print_blocks();
 	void debug_print();
-	void bc_set_print_skipped_blocks(size_t new_bc_i);
 	void bc_set(size_t new_bc_i);
 	void bc_next();
 	void bc_update();
@@ -55,20 +53,21 @@ private:
 	void switchOpcode();
 	void end_finally();
 	void convert_try_finally_to_try_except();
-	void add_try_finally_block(int start, bool inited);
-	void add_try_block(int end);
-	void add_finally_block();
+	void add_try_finally_block(int finallyStart, bool inited);
+	void add_try_block(int end = 0, int target = 0);
+	void add_finally_block(int end);
 	void add_finally_no_op_block(int end);
-	void add_except_block(int elseStart);
+	void add_except_block(int end, int elseStart);
 	void add_else_block(int end);
 	void pop_try();
 	void pop_except();
+	void pop_finally();
 	void pop_try_except_or_try_finally_block();
 
 	// bytecode manipulations (BcMp) functions
 	bool isOpSeqMatch(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
 	int getOpSeqMatchIndex(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
-	bool skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0);
+	bool skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool skipAlsoLastOp = false);
 	bool skipCopyPopExceptIfExists(size_t firstSkipOpcodesNum);
 	bool isOpcodeReturnAfterN(size_t n);
 
@@ -88,6 +87,7 @@ private:
 	std::vector<Instruction> bc;
 	size_t bc_size;
 	size_t bc_i;
+	bool bc_i_skipped;
 	// guard class for "peeking" the next instruction(s)
 	class BcPeeker
 	{

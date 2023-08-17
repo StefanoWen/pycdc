@@ -10,6 +10,7 @@ BuildFromCode::BuildFromCode(PycRef<PycCode> param_code, PycModule* param_mod) :
 	curpos(0),
 	pos(0),
 	bc_i(0),
+	bc_i_skipped(false),
 	unpack(0),
 	else_pop(false),
 	variable_annotations(false),
@@ -21,6 +22,7 @@ BuildFromCode::BuildFromCode(PycRef<PycCode> param_code, PycModule* param_mod) :
 	this->defblock->init();
 	this->curblock = this->defblock;
 	this->blocks.push(this->defblock);
+
 	std::vector<ExceptTableEntry> exceptTableVector = code->exceptTableVector();
 	for (auto it = exceptTableVector.rbegin(); it != exceptTableVector.rend(); ++it)
 	{
@@ -48,13 +50,6 @@ bool BuildFromCode::getCleanBuild() const
 	return this->cleanBuild;
 }
 
-void BuildFromCode::print_blocks()
-{
-	for (unsigned int i = 0; i < blocks.size(); i++)
-		fprintf(stderr, "    ");
-	fprintf(stderr, "%s (%d)", curblock->type_str(), curblock->end());
-}
-
 void BuildFromCode::debug_print()
 {
 #if defined(BLOCK_DEBUG) || defined(STACK_DEBUG)
@@ -63,44 +58,26 @@ void BuildFromCode::debug_print()
 	fprintf(stderr, "%-5d", (unsigned int)stack_hist.size() + 1);
 #endif
 #ifdef BLOCK_DEBUG
-	this->print_blocks();
+	for (unsigned int i = 0; i < blocks.size(); i++)
+		fprintf(stderr, "    ");
+	fprintf(stderr, "%s (%d)", curblock->type_str(), curblock->end());
 #endif
 	fprintf(stderr, "\n");
 #endif
 }
 
-void BuildFromCode::bc_set_print_skipped_blocks(size_t new_bc_i)
+void BuildFromCode::bc_set(size_t new_bc_i)
 {
-	bc_i++;
-	this->bc_update();
-	while (bc_i < new_bc_i)
+	if (new_bc_i < bc_size)
 	{
-		fprintf(stderr, "%-7d", curpos);
-		this->print_blocks();
-		fprintf(stderr, " ** Skipped **");
-		fprintf(stderr, "\n");
-
-		bc_i++;
+		bc_i = new_bc_i;
 		this->bc_update();
 	}
 }
 
-void BuildFromCode::bc_set(size_t new_bc_i)
-{
-#ifdef BLOCK_DEBUG
-	this->bc_set_print_skipped_blocks(new_bc_i);
-#else
-	bc_i = new_bc_i;
-	this->bc_update();
-#endif
-}
-
 void BuildFromCode::bc_next()
 {
-	if (bc_i < bc_size)
-	{
-		this->bc_set(bc_i + 1);
-	}
+	this->bc_set(bc_i + 1);
 }
 
 void BuildFromCode::bc_update()
@@ -176,115 +153,10 @@ void BuildFromCode::binary_or_inplace()
 	stack.push(new ASTBinary(left, right, op));
 }
 
+// exceptions checker
 void BuildFromCode::exceptionsChecker()
 {
-	if (mod->verCompare(3, 11) >= 0 && !exceptTableStack.empty())
-	{
-		if (curblock->blktype() == ASTBlock::BLK_TRY && curblock->end() == curpos)
-		{
-			this->pop_try();
-
-			/*
-			if (this->isOpcodeReturnAfterN(1))
-			{
-				this->convert_try_finally_to_try_except();
-				this->add_except_block(0);
-			}
-			else
-			{
-				this->add_finally_no_op_block(curblock.cast<ASTTryFinallyBlock>()->getFinallyStart());
-			}
-			*/
-		}
-
-		int start = exceptTableStack.top().start;
-		// start of some block
-		if (start == curpos)
-		{
-			int length = exceptTableStack.top().length;
-			int target = exceptTableStack.top().target;
-			bool depth = exceptTableStack.top().depth;
-
-			exceptTableStack.pop();
-			if (depth)
-			{
-
-				// finally / except
-				
-			}
-			else if (previous_depth)
-			{
-				// else
-				if (start != length)
-				{
-					this->add_else_block(curpos + length);
-				}
-			}
-			else
-			{
-				// try
-				this->add_try_finally_block(target, false);
-				this->add_try_block(length);
-			}
-		}
-	}
-
-	if (curblock->blktype() == ASTBlock::BLK_TRY_FINALLY)
-	{
-		if (curblock->inited())
-		{
-			this->add_finally_block();
-		}
-		else
-		{
-			if (opcode == Pyc::BEGIN_FINALLY)
-			{
-				this->add_finally_block();
-			}
-			else
-			{
-				bool is_finally = true;
-				if (opcode == Pyc::JUMP_FORWARD_A)
-				{
-					is_finally = false;
-					this->convert_try_finally_to_try_except();
-				}
-				else
-				{
-					if(this->isOpcodeReturnAfterN(1))
-					{
-						is_finally = false;
-						this->convert_try_finally_to_try_except();
-						this->add_except_block(0);
-					}
-				}
-				if (is_finally)
-				{
-					this->add_finally_no_op_block(curblock.cast<ASTTryFinallyBlock>()->getFinallyStart());
-				}
-			}
-		}
-	}
-	else if (curblock->blktype() == ASTBlock::BLK_TRY_EXCEPT)
-	{
-		if (curblock.cast<ASTTryExceptBlock>()->getElseStart() == curpos)
-		{
-			this->pop_try_except_or_try_finally_block();
-		}
-	}
-	else if (curblock->blktype() == ASTBlock::BLK_NO_OP_FINALLY && curblock->end() == pos)
-	{
-		if (opcode == Pyc::JUMP_FORWARD_A)
-		{
-			this->end_finally();
-		}
-		else if (this->isOpcodeReturnAfterN(1))
-		{
-			this->end_finally();
-			this->add_finally_block();
-		}
-	}
-	else if (curblock->blktype() == ASTBlock::BLK_EXCEPT)
+	if (curblock->blktype() == ASTBlock::BLK_EXCEPT)
 	{
 		if (curblock.cast<ASTExceptBlock>()->elseStart() == curpos)
 		{
@@ -305,16 +177,136 @@ void BuildFromCode::exceptionsChecker()
 			}
 		}
 	}
-	else if (curblock->blktype() == ASTBlock::BLK_ELSE && curblock->end() == curpos)
+	if (mod->verCompare(3, 11) >= 0)
 	{
-		stack = stack_hist.top();
-		stack_hist.pop();
+		if (!exceptTableStack.empty())
+		{
+			if (curblock->blktype() == ASTBlock::BLK_TRY && curblock->end() == curpos)
+			{
+				int tryTarget = curblock.cast<ASTTryBlock>()->target();
+				this->pop_try();
 
-		blocks.pop();
-		blocks.top()->append(curblock.cast<ASTNode>());
-		curblock = blocks.top();
+				if (this->isOpcodeReturnAfterN(1) || isOpSeqMatch(OpSeq{ Pyc::JUMP_FORWARD_A }))
+				{
+					this->convert_try_finally_to_try_except();
+				}
+				else
+				{
+					this->add_finally_block(tryTarget);
+				}
+			}
 
-		this->pop_try_except_or_try_finally_block();
+			int start = exceptTableStack.top().start;
+			// start of some block
+			if (start == curpos)
+			{
+				int length = exceptTableStack.top().length;
+				int target = exceptTableStack.top().target;
+				bool depth = exceptTableStack.top().depth;
+
+				exceptTableStack.pop();
+				if (length != target)
+				{
+					if (depth)
+					{
+						// add -> else / except / finally, respectively
+						if (curblock->blktype() == ASTBlock::BLK_TRY_EXCEPT)
+						{
+							this->add_except_block(length, target);
+						}
+						else if (curblock->blktype() == ASTBlock::BLK_FINALLY)
+						{
+							// turns out it was else then except
+							while (curblock->blktype() == ASTBlock::BLK_FINALLY)
+							{
+								this->pop_finally();
+							}
+
+							PycRef<ASTBlock> elseBlock = new ASTBlock(ASTBlock::BLK_ELSE);
+							elseBlock->moveNodesFromAnother(curblock->getSecondBlock());
+							while (curblock->nodes().size() > 1)
+							{
+								curblock->removeLast();
+							}
+							this->convert_try_finally_to_try_except();
+							curblock.cast<ASTTryExceptBlock>()->setElseBlock(elseBlock);
+							this->add_except_block(0, 0);
+						}
+					}
+					/*
+					else if (previous_depth)
+					{
+						// else
+						if (start != length)
+						{
+							this->add_else_block(curpos + length);
+						}
+					}
+					*/
+					else
+					{
+						// try
+						this->add_try_finally_block(target, false);
+						this->add_try_block(length, target);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if (curblock->blktype() == ASTBlock::BLK_TRY_FINALLY)
+		{
+			if (
+				curblock->inited() || // 3.7-
+				opcode == Pyc::BEGIN_FINALLY || // 3.8
+				!(opcode == Pyc::JUMP_FORWARD_A || // 3.9+
+					this->isOpcodeReturnAfterN(1)) // 3.10+
+				)
+			{
+				this->add_finally_block(curblock.cast<ASTTryFinallyBlock>()->getFinallyStart());
+			}
+			else
+			{
+				this->convert_try_finally_to_try_except();
+			}
+		}
+		else if (curblock->blktype() == ASTBlock::BLK_TRY_EXCEPT)
+		{
+			if (curblock.cast<ASTTryExceptBlock>()->getElseStart() == curpos)
+			{
+				this->pop_try_except_or_try_finally_block();
+			}
+			else if (curblock->nodes().empty())
+			{
+				this->add_except_block(0, 0);
+			}
+		}
+		/*
+		else if (curblock->blktype() == ASTBlock::BLK_NO_OP_FINALLY && curblock->end() == pos)
+		{
+			if (opcode == Pyc::JUMP_FORWARD_A)
+			{
+				this->end_finally();
+			}
+			else if (this->isOpcodeReturnAfterN(1))
+			{
+				this->end_finally();
+				this->add_finally_block();
+			}
+		}
+		*/
+		else if (curblock->blktype() == ASTBlock::BLK_ELSE && curblock->end() == curpos)
+		{
+			stack = stack_hist.top();
+			stack_hist.pop();
+
+			blocks.pop();
+			blocks.top()->append(curblock.cast<ASTNode>());
+			curblock = blocks.top();
+
+			this->pop_try_except_or_try_finally_block();
+		}
 	}
 }
 
@@ -390,7 +382,7 @@ PycRef<ASTNode> BuildFromCode::build()
 	while (bc_i < bc_size-1)
 	{
 		this->checker();
-		
+
 		this->debug_print();
 
 		try {
@@ -404,8 +396,15 @@ PycRef<ASTNode> BuildFromCode::build()
 			|| (curblock->blktype() == ASTBlock::BLK_IF)
 			|| (curblock->blktype() == ASTBlock::BLK_ELIF))
 			&& (curblock->end() == pos);
-
+		
 		this->bc_next();
+#ifdef BLOCK_DEBUG
+		if (bc_i_skipped)
+		{
+			bc_i_skipped = false;
+			fprintf(stderr, "** Skipped **\n");
+		}
+#endif
 	}
 
 	if (stack_hist.size()) {
@@ -1462,7 +1461,7 @@ void BuildFromCode::switchOpcode()
 			|| opcode == Pyc::JUMP_IF_NOT_EXC_MATCH_A)
 		{
 
-			curblock->setEnd(pos + offs);
+			// curblock->setEnd(pos + offs);
 			curblock.cast<ASTExceptBlock>()->setExceptType((opcode == Pyc::JUMP_IF_NOT_EXC_MATCH_A) ? cond : cond.cast<ASTCompare>()->right());
 
 			if (mod->verCompare(3, 11) < 0)
@@ -1665,15 +1664,11 @@ void BuildFromCode::switchOpcode()
 			offs *= sizeof(uint16_t); // // BPO-27129
 		int target_pos = pos + offs;
 
-		if (curblock->blktype() == ASTBlock::BLK_TRY_FINALLY) {
-			if (curblock.cast<ASTTryFinallyBlock>()->getFinallyStart() == pos)
-			{
-				this->add_finally_block();
-			}
-			else
-			{
-				this->add_finally_no_op_block(target_pos);
-			}
+		if (curblock->blktype() == ASTBlock::BLK_FINALLY && curblock->end() == pos)
+		{
+			this->pop_finally();
+
+			this->add_finally_block(target_pos);
 
 			break;
 		}
@@ -1690,7 +1685,7 @@ void BuildFromCode::switchOpcode()
 				curblock.cast<ASTTryExceptBlock>()->setElseStart(target_pos);
 			}
 
-			this->add_except_block(curblock.cast<ASTTryExceptBlock>()->getElseStart());
+			this->add_except_block(0, curblock.cast<ASTTryExceptBlock>()->getElseStart());
 
 			this->skipCopyPopExceptIfExists(1);
 
@@ -2196,12 +2191,6 @@ void BuildFromCode::switchOpcode()
 		else
 		{
 			this->pop_except();
-
-			if (this->isOpcodeReturnAfterN(2))
-			{
-				this->pop_try_except_or_try_finally_block();
-				this->skipCopyPopExceptIfExists(3);
-			}
 		}
 	}
 	break;
@@ -2319,7 +2308,20 @@ void BuildFromCode::switchOpcode()
 	{
 		PycRef<ASTNode> value = stack.top();
 		stack.pop();
-		curblock->append(new ASTReturn(value));
+		PycRef<ASTNode> retNode = new ASTReturn(value);
+		if (curblock->blktype() == ASTBlock::BLK_TRY_FINALLY || curblock->blktype() == ASTBlock::BLK_TRY_EXCEPT)
+		{
+			curblock->getLastNode().cast<ASTBlock>()->append(retNode);
+
+			if (curblock->blktype() == ASTBlock::BLK_TRY_EXCEPT)
+			{
+				this->add_except_block(0, -1);
+			}
+		}
+		else
+		{
+			curblock->append(retNode);
+		}
 	}
 	break;
 	case Pyc::ROT_TWO:
@@ -2469,7 +2471,7 @@ void BuildFromCode::switchOpcode()
 		blocks.push(tryExceptBlock.cast<ASTBlock>());
 		curblock = blocks.top();
 
-		this->add_try_block(0);
+		this->add_try_block();
 	}
 	break;
 	case Pyc::SETUP_FINALLY_A:
@@ -2483,7 +2485,7 @@ void BuildFromCode::switchOpcode()
 		// (checking after POP_BLOCK of TRY in "checker" function)
 
 		this->add_try_finally_block(pos + offs, (mod->verCompare(3, 7) <= 0));
-		this->add_try_block(0);
+		this->add_try_block();
 	}
 	break;
 	case Pyc::BEGIN_FINALLY:
@@ -3060,12 +3062,12 @@ void BuildFromCode::end_finally()
 	else if (curblock->blktype() == ASTBlock::BLK_FINALLY)
 	{
 		// pop and append finally to try finally
-		stack = stack_hist.top();
-		stack_hist.pop();
+		this->pop_finally();
 
-		blocks.pop();
-		blocks.top()->append(curblock.cast<ASTNode>());
-		curblock = blocks.top();
+		while (curblock->nodes().size() > 2)
+		{
+			curblock->removeLast();
+		}
 
 		this->pop_try_except_or_try_finally_block();
 	}
@@ -3074,7 +3076,7 @@ void BuildFromCode::end_finally()
 		this->pop_try_except_or_try_finally_block();
 	}
 
-	this->skipCopyPopExceptIfExists(0);
+	this->skipOpSeqIfExists(OpSeq{ Pyc::COPY_A, Pyc::POP_EXCEPT, Pyc::RERAISE_A }, 1, true);
 }
 
 void BuildFromCode::convert_try_finally_to_try_except()
@@ -3086,25 +3088,25 @@ void BuildFromCode::convert_try_finally_to_try_except()
 	curblock = blocks.top();
 }
 
-void BuildFromCode::add_try_finally_block(int start, bool inited)
+void BuildFromCode::add_try_finally_block(int finallyStart, bool inited)
 {
-	PycRef<ASTBlock> tryFinallyBlock = new ASTTryFinallyBlock(start, inited);
+	PycRef<ASTBlock> tryFinallyBlock = new ASTTryFinallyBlock(finallyStart, inited);
 	blocks.push(tryFinallyBlock.cast<ASTBlock>());
 	curblock = blocks.top();
 }
 
-void BuildFromCode::add_try_block(int end)
+void BuildFromCode::add_try_block(int end, int target)
 {
 	stack_hist.push(stack);
-	PycRef<ASTBlock> tryblock = new ASTBlock(ASTBlock::BLK_TRY, end, true);
+	PycRef<ASTTryBlock> tryblock = new ASTTryBlock(end, target);
 	blocks.push(tryblock.cast<ASTBlock>());
 	curblock = blocks.top();
 }
 
-void BuildFromCode::add_finally_block()
+void BuildFromCode::add_finally_block(int end)
 {
 	stack_hist.push(stack);
-	PycRef<ASTBlock> finallyBlock = new ASTBlock(ASTBlock::BLK_FINALLY, 0, true);
+	PycRef<ASTBlock> finallyBlock = new ASTBlock(ASTBlock::BLK_FINALLY, end, true);
 	blocks.push(finallyBlock);
 	curblock = blocks.top();
 }
@@ -3117,10 +3119,10 @@ void BuildFromCode::add_finally_no_op_block(int end)
 	curblock = blocks.top();
 }
 
-void BuildFromCode::add_except_block(int elseStart)
+void BuildFromCode::add_except_block(int end, int elseStart)
 {
 	stack_hist.push(stack);
-	PycRef<ASTExceptBlock> exceptBlock = new ASTExceptBlock(elseStart);
+	PycRef<ASTExceptBlock> exceptBlock = new ASTExceptBlock(end, elseStart);
 	blocks.push(exceptBlock.cast<ASTBlock>());
 	curblock = blocks.top();
 }
@@ -3146,6 +3148,16 @@ void BuildFromCode::pop_try()
 void BuildFromCode::pop_except()
 {
 	// pop and append except to try-except
+	stack = stack_hist.top();
+	stack_hist.pop();
+
+	blocks.pop();
+	blocks.top()->append(curblock.cast<ASTNode>());
+	curblock = blocks.top();
+}
+
+void BuildFromCode::pop_finally()
+{
 	stack = stack_hist.top();
 	stack_hist.pop();
 

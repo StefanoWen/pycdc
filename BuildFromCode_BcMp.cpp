@@ -9,31 +9,26 @@ bool BuildFromCode::isOpSeqMatch(OpSeq opcodeSequence, size_t firstSkipOpcodesNu
 
 int BuildFromCode::getOpSeqMatchIndex(OpSeq opcodeSequence, size_t firstSkipOpcodesNum, bool onlyFirstMatch)
 {
-	BcPeeker peekSequence(*this);
+	BcPeeker peekSequence(*this, firstSkipOpcodesNum);
 	bool isMatch = !onlyFirstMatch;
-
-	for (size_t i = 1; i < firstSkipOpcodesNum; i++)
-	{
-		peekSequence.peekOne();
-	}
 
 	for (OpSeq::iterator it = opcodeSequence.begin();
 		it != opcodeSequence.end() &&
 		((isMatch && !onlyFirstMatch) ||
-			(!isMatch && onlyFirstMatch)); ++it)
+			(!isMatch && onlyFirstMatch)); ++it, peekSequence.peekOne())
 	{
-		peekSequence.peekOne();
 		isMatch = (*it == opcode);
 	}
 	return (isMatch) ? (int)bc_i : -1;
 }
 
-bool BuildFromCode::skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum)
+bool BuildFromCode::skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum, bool skipAlsoLastOp)
 {
 	int new_bc_i = this->getOpSeqMatchIndex(opcodeSequence, firstSkipOpcodesNum);
 	if (new_bc_i != -1)
 	{
-		this->bc_set((size_t)new_bc_i + 1);
+		this->bc_set((skipAlsoLastOp) ? (size_t)new_bc_i : (size_t)new_bc_i+1);
+		bc_i_skipped = true;
 		return true;
 	}
 	else

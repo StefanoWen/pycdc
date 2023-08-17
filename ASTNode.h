@@ -595,6 +595,7 @@ public:
 	void removeSecond();
 	PycRef<ASTBlock> getFirstBlock() const;
 	PycRef<ASTBlock> getSecondBlock() const;
+	PycRef<ASTNode> getLastNode() const;
 	void extractInnerOfFirstBlock();
 	void moveNodesFromAnother(PycRef<ASTBlock> otherBlock);
 	bool hasOnlyBlockOf(BlkType blktype);
@@ -658,6 +659,18 @@ private:
 	int m_start;
 };
 
+class ASTTryBlock : public ASTBlock
+{
+public:
+	ASTTryBlock(int end, int target)
+		: ASTBlock(ASTBlock::BLK_TRY, end, true), m_target(target) {}
+
+	int target() const { return m_target; }
+
+private:
+	int m_target;
+};
+
 // TODO: change try finally and try except to ASTNode instead of ASTBlock
 class ASTTryFinallyBlock : public ASTBlock
 {
@@ -685,21 +698,24 @@ public:
 	int getExceptStart() const { return m_exceptStart; }
 	int getElseStart() const { return m_elseStart; }
 	int getElseEnd() const { return m_elseEnd; }
+	PycRef<ASTBlock> getElseBlock() const { return m_elseBlock; }
 
 	void setElseStart(int elseStart) { m_elseStart = elseStart; }
 	void setElseEnd(int elseEnd) { m_elseEnd = elseEnd; }
+	void setElseBlock(PycRef<ASTBlock> elseBlock) { m_elseBlock = std::move(elseBlock); }
 
 private:
 	int m_exceptStart;
 	int m_elseStart;
 	int m_elseEnd;
+	PycRef<ASTBlock> m_elseBlock;
 };
 
 class ASTExceptBlock : public ASTBlock
 {
 public:
-	ASTExceptBlock(int elseStart)
-		: ASTBlock(ASTBlock::BLK_EXCEPT, 0),
+	ASTExceptBlock(int end, int elseStart)
+		: ASTBlock(ASTBlock::BLK_EXCEPT, end, true),
 		m_exceptType(NULL), m_exceptAs(NULL),
 		m_elseStart(elseStart)
 	{

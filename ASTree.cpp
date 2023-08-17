@@ -425,8 +425,14 @@ void ASTree::print_src(PycRef<ASTNode> node)
 	case ASTNode::NODE_BLOCK:
 	{
 		PycRef<ASTBlock> blk = node.cast<ASTBlock>();
-		if (blk->blktype() == ASTBlock::BLK_ELSE && blk->size() == 0)
-			break;
+		if (blk->blktype() == ASTBlock::BLK_ELSE)
+		{
+			if (blk->size() == 0)
+			{
+				break;
+			}
+		}
+			
 
 		if (blk->blktype() == ASTBlock::BLK_TRY_EXCEPT || blk->blktype() == ASTBlock::BLK_TRY_FINALLY) {
 			if (blk->blktype() == ASTBlock::BLK_TRY_FINALLY)
@@ -443,6 +449,10 @@ void ASTree::print_src(PycRef<ASTNode> node)
 					// extract inner of try-except (inner is try, except(s), else(?))
 					blk->extractInnerOfFirstBlock();
 				}
+			}
+			else if(blk.cast<ASTTryExceptBlock>()->getElseBlock() != NULL)
+			{
+				blk->append(blk.cast<ASTTryExceptBlock>()->getElseBlock().cast<ASTNode>());
 			}
 			end_line();
 			print_block(blk);
