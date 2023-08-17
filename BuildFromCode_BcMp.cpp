@@ -22,6 +22,11 @@ int BuildFromCode::getOpSeqMatchIndex(OpSeq opcodeSequence, size_t firstSkipOpco
 	return (isMatch) ? (int)bc_i : -1;
 }
 
+void BuildFromCode::skipNOpcodes(size_t n)
+{
+	this->bc_set(bc_i + n);
+}
+
 bool BuildFromCode::skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum, bool skipAlsoLastOp)
 {
 	int new_bc_i = this->getOpSeqMatchIndex(opcodeSequence, firstSkipOpcodesNum);

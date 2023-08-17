@@ -56,7 +56,6 @@ private:
 	void add_try_finally_block(int finallyStart, bool inited);
 	void add_try_block(int end = 0, int target = 0);
 	void add_finally_block(int end);
-	void add_finally_no_op_block(int end);
 	void add_except_block(int end, int elseStart);
 	void add_else_block(int end);
 	void pop_try();
@@ -67,6 +66,7 @@ private:
 	// bytecode manipulations (BcMp) functions
 	bool isOpSeqMatch(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
 	int getOpSeqMatchIndex(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
+	void skipNOpcodes(size_t n);
 	bool skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool skipAlsoLastOp = false);
 	bool skipCopyPopExceptIfExists(size_t firstSkipOpcodesNum);
 	bool isOpcodeReturnAfterN(size_t n);
