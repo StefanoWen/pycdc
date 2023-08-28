@@ -1660,9 +1660,14 @@ void BuildFromCode::switchOpcode()
 			}
 			else
 			{
-				this->add_except_block(0, curblock.cast<ASTTryExceptBlock>()->getElseStart());
-
-				this->skipCopyPopExceptIfExists(1);
+				if (this->skipCopyPopExceptIfExists(1))
+				{
+					this->pop_try_except_or_try_finally_block();
+				}
+				else
+				{
+					this->add_except_block(0, curblock.cast<ASTTryExceptBlock>()->getElseStart());
+				}
 			}
 
 			break;
