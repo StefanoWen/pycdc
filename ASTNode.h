@@ -671,7 +671,34 @@ private:
 	int m_target;
 };
 
-// TODO: change try finally and try except to ASTNode instead of ASTBlock
+// TODO: Remove BLK_TRY_FINALLY& BLK_TRY_EXCEPT
+// and just implement the try-finally & try-except logic
+
+/*
+try-finally structure:
+------------------------------------
+3.0-3.10: SETUP_FINALLY (L)
+< try-body >
+3.0-3.10: POP_BLOCK
+3.0-3.7: LOAD_CONST (None)
+3.8: BEGIN_FINALLY
+3.0-3.8:
+L:
+< final-body >
+3.0-3.8: END_FINALLY
+3.9-3.11: JUMP_FORWARD (E)
+3.11: PUSH_EXC_INFO
+3.9-3.11:
+L:
+< final-body >
+3.9: RERAISE
+3.10-3.11: RERAISE_A (0)
+3.11: COPY
+3.11: POP_EXCEPT
+3.11: RERAISE_A (1)
+E:
+------------------------------------
+*/
 class ASTTryFinallyBlock : public ASTBlock
 {
 public:
@@ -685,6 +712,53 @@ private:
 	int m_finallyStart;
 };
 
+/*
+try: S except E1 as V1: S1 except E2 as V2: S2 ...
+
+3.0-3.7: SETUP_EXCEPT (L1)
+3.8-3.10: SETUP_FINALLY (L1)
+< try-body >
+3.0-3.10: POP_BLOCK
+[
+JUMP_FORWARD (L0) / 
+3.10-3.11: assign_op
+3.10-3.11: RETURN_VALUE
+]
+3.11: PUSH_EXC_INFO
+3.0-3.10: DUP								) only if E1
+<evaluate E1> (LOAD_NAME (E1))				)
+3.0-3.8: COMPARE_OP							)
+3.11: CHECK_EXC_MATCH						)
+3.0: JUMP_IF_FALSE (L2)						)
+3.1-3.8: POP_JUMP_IF_FALSE (L2)				)
+3.9-3.10: JUMP_IF_NOT_EXC_MATCH (L2)		)
+3.11: POP_JUMP_FORWARD_IF_FALSE (L2)		)
+3.0: POP_TOP
+3.0-3.10: POP_TOP
+STORE_NAME (if V1) / (else ->) POP_TOP
+3.0-3.10: POP_TOP
+< except-body >
+POP_EXCEPT
+[
+JUMP_FORWARD (L0) /
+(sometimes doesn't exist)
+3.10-3.11: assign_op
+3.10-3.11: RETURN_VALUE
+]
+
+L2: (next except)
+.............................etc.......................
+
+Ln+1:
+3.0-3.8: END_FINALLY
+3.9: RERAISE
+3.10-3.11: RERAISE_A (0) (sometimes doesn't exist)
+3.11: COPY
+3.11: POP_EXCEPT
+3.11: RERAISE_A (1)
+
+L0:     <next statement>
+*/
 class ASTTryExceptBlock : public ASTBlock {
 public:
 	ASTTryExceptBlock(int exceptStart)
