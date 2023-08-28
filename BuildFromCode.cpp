@@ -213,8 +213,11 @@ void BuildFromCode::exceptionsChecker()
 						}
 						else if (curblock->blktype() == ASTBlock::BLK_EXCEPT)
 						{
+							curblock.cast<ASTExceptBlock>()->setElseStart(target);
+							/*
 							this->add_try_finally_block(target, false);
 							this->add_try_block(length, target);
+							*/
 						}
 					}
 					/*
