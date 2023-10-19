@@ -1884,19 +1884,20 @@ void BuildFromCode::switchOpcode()
 
 			// positional-only and positional-or-keyword parameters (a tuple)
 			if (operand & 0x1) {
-				if (mod->verCompare(3, 10) >= 0) {
-					// (ASTTuple)
-					ASTTuple::value_t defaultsTupleValues = stack.top().cast<ASTTuple>()->values();
-					stack.pop();
-					defaultsValues.assign(defaultsTupleValues.begin(), defaultsTupleValues.end());
-				}
-				else {
+				if (stack.top().type() == ASTNode::NODE_OBJECT) {
 					// (PycTuple)
 					PycSimpleSequence::value_t defaultsTupleValues = stack.top().cast<ASTObject>()->object().cast<PycTuple>()->values();
 					stack.pop();
 					for (PycSimpleSequence::value_t::const_iterator it = defaultsTupleValues.begin(); it != defaultsTupleValues.end(); it++) {
 						defaultsValues.push_back(new ASTObject(*it));
 					}
+					
+				}
+				else {
+					// (ASTTuple)
+					ASTTuple::value_t defaultsTupleValues = stack.top().cast<ASTTuple>()->values();
+					stack.pop();
+					defaultsValues.assign(defaultsTupleValues.begin(), defaultsTupleValues.end());
 				}
 			}
 		}
