@@ -1813,6 +1813,16 @@ void BuildFromCode::switchOpcode()
 		stack.push(new ASTName(assertionErrorString));
 	}
 	break;
+	case Pyc::MAKE_CELL_A:
+	{
+		// do nothing ??
+	}
+	break;
+	case Pyc::COPY_FREE_VARS_A:
+	{
+		// do nothing ??
+	}
+	break;
 	case Pyc::MAKE_CLOSURE_A:
 	case Pyc::MAKE_FUNCTION_A:
 	{
