@@ -2296,6 +2296,7 @@ void BuildFromCode::switchOpcode()
 	}
 	break;
 	case Pyc::WITH_CLEANUP:
+	case Pyc::WITH_CLEANUP_START:
 	{
 		// Stack top should be a None. Ignore it.
 		PycRef<ASTNode> none = stack.top();
@@ -2316,6 +2317,11 @@ void BuildFromCode::switchOpcode()
 		else {
 			fprintf(stderr, "Something TERRIBLE happened! No matching with block found for WITH_CLEANUP at %d\n", curpos);
 		}
+	}
+	break;
+	case Pyc::WITH_CLEANUP_FINISH:
+	{
+		// ignore
 	}
 	break;
 	case Pyc::CHECK_EXC_MATCH:
