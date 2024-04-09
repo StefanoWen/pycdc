@@ -3430,13 +3430,18 @@ void decompyle(PycRef<PycCode> code, PycModule* mod, std::ostream& pyc_output)
                     clean->removeFirst();
             }
         }
-        if (clean->nodes().back().type() == ASTNode::NODE_RETURN) {
+        bool redundantReturnOccured = true;
+        while (clean->nodes().back().type() == ASTNode::NODE_RETURN && redundantReturnOccured) {
             PycRef<ASTReturn> ret = clean->nodes().back().cast<ASTReturn>();
 
             PycRef<ASTObject> retObj = ret->value().try_cast<ASTObject>();
             if (ret->value() == NULL || ret->value().type() == ASTNode::NODE_LOCALS ||
                     (retObj && retObj->object().type() == PycObject::TYPE_NONE)) {
                 clean->removeLast();  // Always an extraneous return statement
+                redundantReturnOccured = true;
+            }
+            else {
+                redundantReturnOccured = false;
             }
         }
     }
