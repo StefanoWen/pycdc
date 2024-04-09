@@ -1187,10 +1187,13 @@ PycRef<ASTNode> BuildFromCode(PycRef<PycCode> code, PycModule* mod)
             }
             break;
         case Pyc::JUMP_ABSOLUTE_A:
+        case Pyc::JUMP_BACKWARD_A:
             {
                 int offs = operand;
                 if (mod->verCompare(3, 10) >= 0)
                     offs *= sizeof(uint16_t); // // BPO-27129
+                if (opcode == Pyc::JUMP_BACKWARD_A)
+                    offs = pos - offs;
 
                 if (offs < pos) {
                     if (curblock->blktype() == ASTBlock::BLK_FOR) {
