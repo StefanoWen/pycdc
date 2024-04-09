@@ -2470,6 +2470,7 @@ PycRef<ASTNode> BuildFromCode(PycRef<PycCode> code, PycModule* mod)
         case Pyc::PRECALL_A:
         case Pyc::RESUME_A:
         case Pyc::INSTRUMENTED_RESUME_A:
+        case Pyc::RETURN_GENERATOR:
             /* We just entirely ignore this / no-op */
             break;
         case Pyc::CACHE:
