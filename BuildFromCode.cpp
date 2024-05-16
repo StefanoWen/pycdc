@@ -267,14 +267,22 @@ void BuildFromCode::exceptionsChecker()
 		}
 		else if (curblock->blktype() == ASTBlock::BLK_ELSE && curblock->end() == curpos)
 		{
-			stack = stack_hist.top();
-			stack_hist.pop();
+            blocks.pop();
+            if (blocks.top()->blktype() == ASTBlock::BLK_TRY_FINALLY
+                || blocks.top()->blktype() == ASTBlock::BLK_TRY_EXCEPT)
+            {
+                stack = stack_hist.top();
+                stack_hist.pop();
 
-			blocks.pop();
-			blocks.top()->append(curblock.cast<ASTNode>());
-			curblock = blocks.top();
+                blocks.top()->append(curblock.cast<ASTNode>());
+                curblock = blocks.top();
 
-			this->pop_try_except_or_try_finally_block();
+                this->pop_try_except_or_try_finally_block();
+            }
+            else
+            {
+                blocks.push(curblock);
+            }
 		}
 	}
 }
