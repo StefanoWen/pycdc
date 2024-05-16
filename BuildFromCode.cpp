@@ -322,23 +322,17 @@ void BuildFromCode::checker()
 
 		PycRef<ASTBlock> prev = curblock;
 		while (prev->end() < pos
-			&& prev->blktype() != ASTBlock::BLK_MAIN)
-		{
-			/*
-			if (prev->blktype() != ASTBlock::BLK_CONTAINER)
-			{
-				if (prev->end() == 0)
-				{
-					break;
-				}
+			&& prev->blktype() != ASTBlock::BLK_MAIN
+			&& prev->blktype() != ASTBlock::BLK_TRY
+			&& prev->blktype() != ASTBlock::BLK_TRY_EXCEPT
+			&& prev->blktype() != ASTBlock::BLK_TRY_FINALLY
+			&& prev->blktype() != ASTBlock::BLK_EXCEPT
+			&& prev->blktype() != ASTBlock::BLK_FINALLY)
+        {
+			//stack = stack_hist.top(); // comment this line or not?
+			if (!stack_hist.empty())
+				stack_hist.pop();
 
-				// We want to keep the stack the same, but we need to pop
-				// a level off the history.
-				// stack = stack_hist.top();
-				if (!stack_hist.empty())
-					stack_hist.pop();
-			}
-			*/
 			blocks.pop();
 
 			if (blocks.empty())
