@@ -24,7 +24,10 @@ int BuildFromCode::getOpSeqMatchIndex(OpSeq opcodeSequence, size_t firstSkipOpco
 
 void BuildFromCode::skipNOpcodes(size_t n)
 {
-	this->bc_set(bc_i + n);
+	if (n > 0) {
+		this->bc_set(bc_i + n);
+		bc_i_skipped = true;
+	}
 }
 
 bool BuildFromCode::skipOpSeqIfExists(OpSeq opcodeSequence, size_t firstSkipOpcodesNum, bool skipAlsoLastOp)
