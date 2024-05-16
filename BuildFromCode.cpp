@@ -156,6 +156,8 @@ void BuildFromCode::binary_or_inplace()
 // exceptions checker
 void BuildFromCode::exceptionsChecker()
 {
+	while (this->skipOpSeqIfExists(OpSeq{ Pyc::POP_BLOCK, Pyc::CALL_FINALLY_A, Pyc::POP_TOP }, 0, true)
+        || this->skipOpSeqIfExists(OpSeq{ Pyc::POP_BLOCK, Pyc::CALL_FINALLY_A }, 0, true)) {}
 	if (mod->verCompare(3, 11) >= 0)
 	{
 		if (!exceptTableStack.empty())
@@ -1199,6 +1201,12 @@ void BuildFromCode::switchOpcode()
 	case Pyc::END_FINALLY:
 	{
 		this->end_finally();
+	}
+	break;
+	case Pyc::CALL_FINALLY_A:
+	case Pyc::POP_FINALLY_A:
+	{
+		// ignore
 	}
 	break;
 	case Pyc::EXEC_STMT:
