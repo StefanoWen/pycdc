@@ -44,24 +44,7 @@ private:
 	void bc_set(size_t new_bc_i);
 	void bc_next();
 	void bc_update();
-	void append_to_chain_store(const PycRef<ASTNode>& chainStore, PycRef<ASTNode> item);
-	PycRef<ASTNode> StackPopTop();
-	void checkIfExpr();
-	void binary_or_inplace();
-	void exceptionsChecker();
-	void checker();
 	void switchOpcode();
-	void end_finally();
-	void convert_try_finally_to_try_except();
-	void add_try_finally_block(int finallyStart, bool inited);
-	void add_try_block(int end = 0, int target = 0);
-	void add_finally_block(int end);
-	void add_except_block(int end, int elseStart);
-	void add_else_block(int end);
-	void pop_try();
-	void pop_except();
-	void pop_finally();
-	void pop_try_except_or_try_finally_block();
 
 	// bytecode manipulations (BcMp) functions
 	bool isOpSeqMatch(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);
