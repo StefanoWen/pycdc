@@ -137,11 +137,12 @@ PycRef<ASTNode> BuildFromCode::build()
 void BuildFromCode::switchOpcode()
 {
 	switch (opcode) {
-    case Pyc::NOP:
-    {
-        // no-operation opcode
-    }
-    break;
+	case Pyc::NOP:
+	case Pyc::RESUME_A:
+	{
+		// no-operation opcode
+	}
+	break;
 	default:
 		fprintf(stderr, "Unsupported opcode: %s\n", Pyc::OpcodeName(opcode & 0xFF));
 		cleanBuild = false;
