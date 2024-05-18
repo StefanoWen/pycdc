@@ -137,6 +137,23 @@ PycRef<ASTNode> BuildFromCode::build()
 void BuildFromCode::switchOpcode()
 {
 	switch (opcode) {
+	case Pyc::LOAD_CONST_A:
+	{
+		PycRef<ASTObject> t_ob = new ASTObject(code->getConst(operand));
+
+		if ((t_ob->object().type() == PycObject::TYPE_TUPLE ||
+			t_ob->object().type() == PycObject::TYPE_SMALL_TUPLE)) {
+			ASTTuple::value_t values;
+			stack.push(new ASTTuple(values));
+		}
+		else if (t_ob->object().type() == PycObject::TYPE_NONE) {
+			stack.push(NULL);
+		}
+		else {
+			stack.push(t_ob.cast<ASTNode>());
+		}
+	}
+	break;
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
 	{
