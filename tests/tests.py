@@ -6,6 +6,7 @@ import shutil
 import sys
 import re
 import time
+import argparse
 
 WHITE_COLOR = 'white'
 LRED_COLOR = 'light_red'
@@ -288,17 +289,28 @@ def print_summary(version_to_decompiled_count, input_files_count):
 	else:
 		print_info('-', 'FAILED ALL', color=LRED_COLOR)
 
-def get_sys_args_and_kwargs():
-	kwargs = {}
-	args = []
-	if len(sys.argv) > 1:
-		for arg in sys.argv[1:]:
-			if '=' in arg:
-				key, value = arg.split('=', 1)
-				kwargs[key] = value
-			else:
-				args.append(arg)
-	return args, kwargs
+def get_args():
+	parser = argparse.ArgumentParser()
+	parser.add_argument('pycdc_path', help='e.g. "..\\Debug\\pycdc.exe"')
+	parser.add_argument('-e', '--expression', default='*', help='Expression for the test files. (e.g. "exceptions" or "exceptions*")')
+	parser.add_argument('-v', '--versions', nargs='*', default=[], help='Test specific version(s). (e.g. "310" or "39 310")')
+	parser.add_argument('-q', '--quiet', type=int, default=0, help='Specify quiet level (0-3). (e.g. "-q 3" or "-q 0")')
+	parser.add_argument('--debug', action='store_true', default=False, help='Print more information on fails/errors.')
+	parser.add_argument('--no-color', action='store_true', default=False, help='Disable colors on the terminal.')
+	args = parser.parse_args()
+	for version in args.versions:
+		if not version.isdigit():
+			parser.error('Version must consist only of digits. (e.g. "39")')
+		elif version[0] not in versions or version[1:] not in versions[version[0]]:
+			parser.error(f'Version "{version}" not supported. Supported versions are: {versions}')
+	if args.quiet < 0 or args.quiet > 3:
+		parser.error('quiet level must be between 0-3 (inclusive).')
+	if args.debug and args.quiet > 1:
+		parser.error('debug can only be when quiet level <= 1')
+	if args.pycdc_path:
+		if not Path(args.pycdc_path).exists():
+			parser.error(f'File "{args.pycdc_path}" not exists.')
+	return args
 
 def init_and_get_args():
 	global versions
@@ -308,29 +320,21 @@ def init_and_get_args():
 	quiet_level = 0
 	global with_color
 	with_color = True
-	old_str = ''
 	file_basename_exp = '*'
-	decompile_without_test = False
-	compile_without_test = False
-	args, kwargs = get_sys_args_and_kwargs()
-	for arg in args:
-		if arg == 'debug':
-			debug = True
-		elif arg == 'old':
-			old_str = '_old'
-		elif arg.count('q') == len(arg):
-			quiet_level = len(arg)
-		elif arg == 'noc':
-			with_color = False
-		elif arg.isdigit():
-			if arg[0] not in versions or arg[1:] not in versions[arg[0]]:
-				print_error_and_exit('[-] Version not supported')
+	
+	args = get_args()
+	file_basename_exp = args.expression
+	file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
+	if args.versions:
+		versions = {}
+		for version in args.versions:
+			if version[0] in versions:
+				versions[version[0]].add(version[1:])
 			else:
-				versions = {arg[0]: [arg[1:]]}
-	for arg_name, arg_value in kwargs.items():
-		if arg_name == 'exp':
-			file_basename_exp = arg_value
-			file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
+				versions[version[0]] = {version[1:]}
+	with_color = not args.no_color
+	quiet_level = args.quiet
+	debug = args.debug
 	
 	if with_color:
 		global colored
@@ -343,8 +347,7 @@ def init_and_get_args():
 				return str
 		just_fix_windows_console()
 	
-	pycdc_path = run_cmd('where pycdc%s' % old_str, True).split('\n')[0]
-	return file_basename_exp, pycdc_path
+	return file_basename_exp, args.pycdc_path
 
 def main():
 	global max_align_need
