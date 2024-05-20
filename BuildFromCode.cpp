@@ -166,3 +166,10 @@ void BuildFromCode::switchOpcode()
 		throw UnsupportedOpcodeException();
 	}
 }
+
+PycRef<ASTNode> BuildFromCode::pop_top()
+{
+	PycRef<ASTNode> tos = stack.top();
+	stack.pop();
+	return tos;
+}
