@@ -181,6 +181,7 @@ void BuildFromCode::switchOpcode()
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
 	case Pyc::CACHE:
+	case Pyc::PUSH_NULL:
 	{
 		// no-operation opcode
 	}
