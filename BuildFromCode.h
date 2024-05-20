@@ -46,6 +46,9 @@ private:
 	void bc_update();
 	void switchOpcode();
 	PycRef<ASTNode> pop_top();
+	void pop_append_top_block();
+	PycRef<ASTBlock> pop_top_block();
+	void push_block(PycRef<ASTBlock> newBlk);
 
 	// bytecode manipulations (BcMp) functions
 	bool isOpSeqMatch(OpSeq opcodeSequence, size_t firstSkipOpcodesNum = 0, bool onlyFirstMatch = false);

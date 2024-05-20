@@ -198,3 +198,24 @@ PycRef<ASTNode> BuildFromCode::pop_top()
 	stack.pop();
 	return tos;
 }
+
+void BuildFromCode::pop_append_top_block()
+{
+	blocks.pop();
+	blocks.top()->append(curblock.cast<ASTNode>());
+	curblock = blocks.top();
+}
+
+PycRef<ASTBlock> BuildFromCode::pop_top_block()
+{
+	PycRef<ASTBlock> top_block = blocks.top();
+	blocks.pop();
+	curblock = blocks.top();
+	return top_block;
+}
+
+void BuildFromCode::push_block(PycRef<ASTBlock> newBlk)
+{
+	blocks.push(newBlk);
+	curblock = blocks.top();
+}
