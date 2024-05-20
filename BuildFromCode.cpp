@@ -170,6 +170,21 @@ void BuildFromCode::switchOpcode()
 		curblock->append(new ASTStore(value, name));
 	}
 	break;
+	case Pyc::LOAD_GLOBAL_A:
+	{
+		if (mod->verCompare(3, 11) >= 0) {
+			// Loads the global named co_names[namei>>1] onto the stack.
+			if (operand & 1) {
+				/* Changed in version 3.11:
+				If the low bit of "NAMEI" (operand) is set,
+				then a NULL is pushed to the stack before the global variable. */
+				stack.push(nullptr);
+			}
+			operand >>= 1;
+		}
+		stack.push(new ASTName(code->getName(operand)));
+	}
+	break;
 	case Pyc::LOAD_NAME_A:
 	{
 		stack.push(new ASTName(code->getName(operand)));
