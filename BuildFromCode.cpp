@@ -180,6 +180,7 @@ void BuildFromCode::switchOpcode()
 	break;
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
+	case Pyc::CACHE:
 	{
 		// no-operation opcode
 	}
