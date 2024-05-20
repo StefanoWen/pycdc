@@ -736,9 +736,6 @@ void ASTree::print_src(PycRef<ASTNode> node)
 					pyc_output << ", ";
 				const char* param_name = code_src->getLocal(narg++)->value();
 				pyc_output << param_name;
-				if (annot_i * 2 + 1 < annotations.size()) {
-					annot_i = annot_i;
-				}
 				if (annot_i * 2 + 1 < annotations.size() && strcmp(param_name, annotations[annot_i * 2].cast<ASTName>()->name()->value()) == 0) {
 					pyc_output << ": ";
 					pyc_output << annotations[annot_i * 2 + 1].cast<ASTName>()->name()->value();
