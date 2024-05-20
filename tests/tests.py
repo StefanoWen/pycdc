@@ -35,7 +35,8 @@ versions = {
 		'8',
 		'9',
 		'10',
-		'11'
+		'11',
+		'12'
 		]}
 
 def run_cmd(cmd, with_output=False, with_err=False):
