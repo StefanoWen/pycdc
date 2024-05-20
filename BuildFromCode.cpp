@@ -254,6 +254,16 @@ void BuildFromCode::switchOpcode()
 		stack.push(NULL);
 	}
 	break;
+	case Pyc::BUILD_TUPLE_A:
+	{
+		ASTTuple::value_t values;
+		values.resize(operand);
+		for (int i = 0; i < operand; i++) {
+			values[operand - i - 1] = pop_top();
+		}
+		stack.push(new ASTTuple(values));
+	}
+	break;
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
 	case Pyc::CACHE:
