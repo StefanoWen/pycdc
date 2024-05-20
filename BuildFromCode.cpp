@@ -154,6 +154,16 @@ void BuildFromCode::switchOpcode()
 		}
 	}
 	break;
+	case Pyc::STORE_NAME_A:
+	{
+		PycRef<ASTNode> value = pop_top();
+
+		PycRef<PycString> varname = code->getName(operand);
+		PycRef<ASTNode> name = new ASTName(varname);
+
+		curblock->append(new ASTStore(value, name));
+	}
+	break;
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
 	{
