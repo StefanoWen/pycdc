@@ -332,6 +332,7 @@ void bc_next(PycBuffer& source, PycModule* mod, int& opcode, int& operand, int& 
 {
 	opcode = Pyc::ByteToOpcode(mod->majorVer(), mod->minorVer(), source.getByte());
 	bool py36_opcode = (mod->verCompare(3, 6) >= 0);
+	int i = 0;
 	if (py36_opcode) {
 		operand = source.getByte();
 		pos += 2;
@@ -340,7 +341,7 @@ void bc_next(PycBuffer& source, PycModule* mod, int& opcode, int& operand, int& 
 		pos += 1;
 	}
 
-	if (opcode == Pyc::EXTENDED_ARG_A) {
+	for(i=0; i < 2 && opcode == Pyc::EXTENDED_ARG_A; i++) {
 		if (py36_opcode) {
 			opcode = Pyc::ByteToOpcode(mod->majorVer(), mod->minorVer(), source.getByte());
 			operand <<= 8;
