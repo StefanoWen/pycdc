@@ -723,8 +723,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				pyc_output << "(";
 			}
 
-			PycRef<ASTTuple> annotations_tuple = src.cast<ASTFunction>()->annotations().cast<ASTTuple>();
-			ASTTuple::value_t annotations = annotations_tuple->values();
+			ASTFunction::annotMap_t annotMap = src.cast<ASTFunction>()->annotations();
 			ASTFunction::defarg_t defargs = src.cast<ASTFunction>()->defargs();
 			ASTFunction::defarg_t kwdefargs = src.cast<ASTFunction>()->kwdefargs();
 
@@ -736,9 +735,9 @@ void ASTree::print_src(PycRef<ASTNode> node)
 					pyc_output << ", ";
 				const char* param_name = code_src->getLocal(narg++)->value();
 				pyc_output << param_name;
-				if (annot_i * 2 + 1 < annotations.size() && strcmp(param_name, annotations[annot_i * 2].cast<ASTName>()->name()->value()) == 0) {
+				if (annot_i < annotMap.size() && strcmp(param_name, annotMap[annot_i].first->name()->value()) == 0) {
 					pyc_output << ": ";
-					pyc_output << annotations[annot_i * 2 + 1].cast<ASTName>()->name()->value();
+					pyc_output << annotMap[annot_i].second->name()->value();
 					annot_i++;
 				}
 				if ((code_src->argCount() - i) <= (int)defargs.size()) {
@@ -753,9 +752,9 @@ void ASTree::print_src(PycRef<ASTNode> node)
 					pyc_output << ", ";
 					const char* param_name = code_src->getLocal(narg++)->value();
 					pyc_output << param_name;
-					if (annot_i * 2 + 1 < annotations.size() && strcmp(param_name, annotations[annot_i * 2].cast<ASTName>()->name()->value()) == 0) {
+					if (annot_i < annotMap.size() && strcmp(param_name, annotMap[annot_i].first->name()->value()) == 0) {
 						pyc_output << ": ";
-						pyc_output << annotations[annot_i * 2 + 1].cast<ASTName>()->name()->value();
+						pyc_output << annotMap[annot_i].second->name()->value();
 						annot_i++;
 					}
 					if ((code_src->kwOnlyArgCount() - i) <= (int)kwdefargs.size()) {

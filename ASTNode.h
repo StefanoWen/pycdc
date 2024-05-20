@@ -248,25 +248,26 @@ private:
 class ASTFunction : public ASTNode {
 public:
 	typedef std::list<PycRef<ASTNode>> defarg_t;
+	typedef std::vector<std::pair<PycRef<ASTName>, PycRef<ASTName>>> annotMap_t;
 
 	ASTFunction(PycRef<ASTNode> code, defarg_t defArgs, defarg_t kwDefArgs)
 		: ASTNode(NODE_FUNCTION), m_code(std::move(code)),
-		m_annotations_tuple(), m_defargs(std::move(defArgs)),
+		m_annotations(), m_defargs(std::move(defArgs)),
 		m_kwdefargs(std::move(kwDefArgs)), m_is_comp_lambda(false) {}
-	ASTFunction(PycRef<ASTNode> code, PycRef<ASTNode> annotations_tuple, defarg_t defArgs, defarg_t kwDefArgs, bool is_comp_lambda)
+	ASTFunction(PycRef<ASTNode> code, annotMap_t annotations_tuple, defarg_t defArgs, defarg_t kwDefArgs, bool is_comp_lambda)
 		: ASTNode(NODE_FUNCTION), m_code(std::move(code)),
-		  m_annotations_tuple(annotations_tuple), m_defargs(std::move(defArgs)),
+		m_annotations(annotations_tuple), m_defargs(std::move(defArgs)),
 		  m_kwdefargs(std::move(kwDefArgs)), m_is_comp_lambda(is_comp_lambda) {}
 
 	PycRef<ASTNode> code() const { return m_code; }
-	PycRef<ASTNode> annotations() const { return m_annotations_tuple; }
+	annotMap_t annotations() const { return m_annotations; }
 	const defarg_t& defargs() const { return m_defargs; }
 	const defarg_t& kwdefargs() const { return m_kwdefargs; }
 	bool is_comp_lambda() const { return m_is_comp_lambda; }
 
 private:
 	PycRef<ASTNode> m_code;
-	PycRef<ASTNode> m_annotations_tuple;
+	annotMap_t m_annotations;
 	defarg_t m_defargs;
 	defarg_t m_kwdefargs;
 	bool m_is_comp_lambda;
