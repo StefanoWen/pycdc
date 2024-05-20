@@ -44,6 +44,7 @@ private:
 	void bc_set(size_t new_bc_i);
 	void bc_next();
 	void bc_update();
+	void checker();
 	void switchOpcode();
 	PycRef<ASTNode> pop_top();
 	void pop_append_top_block();

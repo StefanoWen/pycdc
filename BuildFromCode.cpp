@@ -88,19 +88,25 @@ void BuildFromCode::bc_update()
 	pos = bc[bc_i].pos;
 }
 
+void BuildFromCode::checker()
+{
+	while (curblock->end() == curpos) {
+		pop_append_top_block();
+	}
+}
+
 PycRef<ASTNode> BuildFromCode::build()
 {
 	while (bc_i < bc_size-1)
 	{
 		this->debug_print();
-
+		this->checker();
 		try {
 			this->switchOpcode();
 		}
 		catch (UnsupportedOpcodeException&) {
 			return new ASTNodeList(defblock->nodes());
 		}
-		
 		this->bc_next();
 #ifdef BLOCK_DEBUG
 		if (bc_i_skipped)
@@ -176,6 +182,56 @@ void BuildFromCode::switchOpcode()
 		//         changed under GH-100923
 		auto arg = (mod->verCompare(3, 12) >= 0) ? operand >> 4 : operand;
 		stack.push(new ASTCompare(left, right, arg));
+	}
+	break;
+	case Pyc::POP_JUMP_IF_FALSE_A:
+	{
+		PycRef<ASTNode> cond = stack.top();
+		PycRef<ASTCondBlock> condBlk;
+
+		/* "Jump if true" means "Jump if not false" */
+		bool neg = opcode == Pyc::POP_JUMP_IF_TRUE_A;
+
+		int offs = operand;
+		if (mod->verCompare(3, 10) >= 0)
+			offs *= sizeof(uint16_t); // // BPO-27129
+		if (mod->verCompare(3, 12) >= 0) {
+			/* Offset is relative in these cases */
+			offs += pos;
+		}
+
+		if (curblock->blktype() == ASTBlock::BLK_IF
+			&& (curblock->end() == offs || curblock->end() == pos))
+		{
+			PycRef<ASTCondBlock> prevCondBlk = curblock.cast<ASTCondBlock>();
+			pop_top_block();
+			PycRef<ASTNode> prevCond = prevCondBlk.cast<ASTCondBlock>()->cond();
+			bool prevCondNeg = prevCondBlk.cast<ASTCondBlock>()->negative();
+			ASTBinary::BinOp binType = (prevCondBlk->end() == offs) ? ASTBinary::BIN_LOG_AND : ASTBinary::BIN_LOG_OR;
+			if ((prevCondBlk->end() == offs && prevCondNeg) ||
+				(prevCondBlk->end() == pos && !prevCondNeg)) {
+				// if not prev_cond and cond
+				prevCond = new ASTUnary(prevCond, ASTUnary::UN_NOT);
+			}
+			cond = new ASTBinary(prevCond, cond, binType);
+		}
+
+		condBlk = new ASTCondBlock(ASTBlock::BLK_IF, offs, cond, neg);
+		push_block(condBlk.cast<ASTBlock>());
+	}
+	break;
+	case Pyc::JUMP_FORWARD_A:
+	{
+		int offs = operand;
+		if (mod->verCompare(3, 10) >= 0)
+			offs *= sizeof(uint16_t); // // BPO-27129
+		int target = offs + pos;
+
+		if (curblock->blktype() == ASTBlock::BLK_IF && curblock->end() == pos) {
+			pop_append_top_block();
+			PycRef<ASTBlock> elseBlk = new ASTBlock(ASTBlock::BLK_ELSE, target);
+			push_block(elseBlk);
+		}
 	}
 	break;
 	case Pyc::NOP:
