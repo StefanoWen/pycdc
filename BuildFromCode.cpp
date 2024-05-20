@@ -164,6 +164,11 @@ void BuildFromCode::switchOpcode()
 		curblock->append(new ASTStore(value, name));
 	}
 	break;
+	case Pyc::LOAD_NAME_A:
+	{
+		stack.push(new ASTName(code->getName(operand)));
+	}
+	break;
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
 	{
