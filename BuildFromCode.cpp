@@ -18,7 +18,7 @@ BuildFromCode::BuildFromCode(PycRef<PycCode> param_code, PycModule* param_mod) :
 	comprehension_counter(0),
 	previous_depth(false)
 {
-	this->defblock = new ASTBlock(ASTBlock::BLK_MAIN);
+	this->defblock = new ASTBlock(ASTBlock::BLK_MAIN, -1);
 	this->defblock->init();
 	this->curblock = this->defblock;
 	this->blocks.push(this->defblock);
