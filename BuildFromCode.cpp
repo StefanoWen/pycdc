@@ -169,6 +169,15 @@ void BuildFromCode::switchOpcode()
 		stack.push(new ASTName(code->getName(operand)));
 	}
 	break;
+	case Pyc::COMPARE_OP_A:
+	{
+		PycRef<ASTNode> right = pop_top();
+		PycRef<ASTNode> left = pop_top();
+		//         changed under GH-100923
+		auto arg = (mod->verCompare(3, 12) >= 0) ? operand >> 4 : operand;
+		stack.push(new ASTCompare(left, right, arg));
+	}
+	break;
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
 	{
