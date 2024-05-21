@@ -1,6 +1,11 @@
+x = 1
+y = 1
+z = 1
 def outout():
 	gg = 0
 	gg2 = 0
+	x = 1
+	z = 1
 	
 	def no():
 		print('nice')
@@ -163,4 +168,39 @@ def outout():
 	def three_annot_three_default1(a: int, *, b = '1', c: str = '2', d: int = 1):
 		print(a, b, c, d)
 		print(gg)
- 
+	
+	def inner0():
+		global e
+		e = 1
+		e = 2
+	
+	def inner1():
+		global x
+		x = 2
+	
+	def inner2():
+		global x, z
+		x = 2
+		z = 2
+	
+	def inner3():
+		nonlocal x
+		x = 1
+		x = 2
+	
+	def inner4():
+		print(x)
+	
+	def inner5():
+		print(y)
+	
+	def inner6():
+		global x
+		print(x)
+	
+	def inner7():
+		print(x)
+		x = 2
+	
+	def inner8():
+		x = 2
