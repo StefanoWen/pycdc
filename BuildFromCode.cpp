@@ -182,27 +182,39 @@ void BuildFromCode::switchOpcode()
 			}
 			operand >>= 1;
 		}
-		stack.push(new ASTName(code->getName(operand)));
+		PycRef<PycString> varname = code->getName(operand);
+		code->markGlobalUsed(varname, false);
+		PycRef<ASTNode> name = new ASTName(varname);
+		stack.push(name);
 	}
 	break;
 	case Pyc::LOAD_FAST_A:
+	case Pyc::LOAD_FAST_CHECK_A:
 	case Pyc::LOAD_CLOSURE_A:
-	case Pyc::LOAD_DEREF_A:
 	{
 		stack.push(new ASTName(code->getLocal(operand)));
+	}
+	break;
+	case Pyc::LOAD_DEREF_A:
+	{
+		stack.push(new ASTName(code->getCellVar(mod, operand)));
 	}
 	break;
 	case Pyc::STORE_NAME_A:
 	case Pyc::STORE_FAST_A:
 	case Pyc::STORE_DEREF_A:
+	case Pyc::STORE_GLOBAL_A:
 	{
 		PycRef<ASTNode> value = pop_top();
-
-		PycRef<PycString> varname = (opcode == Pyc::STORE_NAME_A) ? code->getName(operand) :
+		PycRef<PycString> varname = (opcode == Pyc::STORE_NAME_A || opcode == Pyc::STORE_GLOBAL_A) ? code->getName(operand) :
 			(opcode == Pyc::STORE_FAST_A) ? code->getLocal(operand) : code->getCellVar(mod, operand);
 		PycRef<ASTNode> name = new ASTName(varname);
-
 		curblock->append(new ASTStore(value, name));
+		if (opcode == Pyc::STORE_GLOBAL_A) {
+			code->markGlobalUsed(varname, true);
+		} else if (opcode == Pyc::STORE_DEREF_A) {
+			code->markCellStored(varname);
+		}
 	}
 	break;
 	case Pyc::COMPARE_OP_A:
@@ -379,11 +391,14 @@ void BuildFromCode::switchOpcode()
 		std::reverse(values.begin(), values.end());
 		stack.push(new ASTConstMap(keys, values));
 	}
+	case Pyc::MAKE_CELL_A: {
+		PycRef<PycString> varname = code->getCellVar(mod, operand);
+		code->markCellToBeUsed(varname);
+	}
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
 	case Pyc::CACHE:
 	case Pyc::COPY_FREE_VARS_A:
-	case Pyc::MAKE_CELL_A:
 	{
 		// no-operation opcode
 	}

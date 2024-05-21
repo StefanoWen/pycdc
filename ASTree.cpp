@@ -531,6 +531,7 @@ void ASTree::print_src(PycRef<ASTNode> node, const PycRef<PycCode>& prev_code)
 				end_line();
 			}
 			cur_indent--;
+			code->setOuterCells(prev_code->getCellsToBeUsed());
 			decompyle(code);
 		}
 		else {
@@ -1031,15 +1032,33 @@ void ASTree::decompyle(PycRef<PycCode> new_code)
 		if (m_code->consts()->size())
 			print_docstring(m_code->getConst(0), cur_indent + 1);
 
-		PycCode::globals_t globs = m_code->getGlobals();
+		PycCode::cells_t outerCells = m_code->getOuterCells();
+		PycCode::globals_t globs = m_code->getGlobalsUsed();
 		if (globs.size()) {
-			start_line(cur_indent + 1);
-			pyc_output << "global ";
 			bool first = true;
 			for (const auto& glob : globs) {
+				if (glob.second || outerCells.find(glob.first) != outerCells.end()) {
+					if (first) {
+						start_line(cur_indent + 1);
+						pyc_output << "global ";
+					} else
+						pyc_output << ", ";
+					pyc_output << glob.first->value();
+					first = false;
+				}
+			}
+			if (!first)
+				pyc_output << "\n";
+		}
+		PycCode::cells_t cellsStored = m_code->getCellsStored();
+		if (cellsStored.size()) {
+			start_line(cur_indent + 1);
+			pyc_output << "nonlocal ";
+			bool first = true;
+			for (const auto& cell : cellsStored) {
 				if (!first)
 					pyc_output << ", ";
-				pyc_output << glob->value();
+				pyc_output << cell->value();
 				first = false;
 			}
 			pyc_output << "\n";
