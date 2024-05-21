@@ -24,11 +24,11 @@ private:
 	int cmp_prec(PycRef<ASTNode> parent, PycRef<ASTNode> child);
 	void start_line(int indent);
 	void end_line();
-	void print_block(PycRef<ASTBlock> blk);
-	void print_formatted_value(PycRef<ASTFormattedValue> formatted_value);
+	void print_block(PycRef<ASTBlock> blk, const PycRef<PycCode>& prev_code);
+	void print_formatted_value(PycRef<ASTFormattedValue> formatted_value, const PycRef<PycCode>& prev_code);
 	bool print_docstring(PycRef<PycObject> obj, int indent);
-	void print_ordered(PycRef<ASTNode> parent, PycRef<ASTNode> child);
-	void print_src(PycRef<ASTNode> node);
+	void print_ordered(PycRef<ASTNode> parent, PycRef<ASTNode> child, const PycRef<PycCode>& prev_code);
+	void print_src(PycRef<ASTNode> node, const PycRef<PycCode>& prev_code);
 
 	PycRef<PycCode> m_code;
 	PycModule* mod;

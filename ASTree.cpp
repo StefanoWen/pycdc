@@ -82,31 +82,31 @@ void ASTree::end_line()
 	pyc_output << "\n";
 }
 
-void ASTree::print_block(PycRef<ASTBlock> blk)
+void ASTree::print_block(PycRef<ASTBlock> blk, const PycRef<PycCode>& prev_code)
 {
 	ASTBlock::list_t lines = blk->nodes();
 
 	if (lines.size() == 0) {
 		PycRef<ASTNode> pass = new ASTKeyword(ASTKeyword::KW_PASS);
 		start_line(cur_indent);
-		print_src(pass);
+		print_src(pass, prev_code);
 	}
 
 	for (auto ln = lines.cbegin(); ln != lines.cend();) {
 		if ((*ln).cast<ASTNode>().type() != ASTNode::NODE_NODELIST) {
 			start_line(cur_indent);
 		}
-		print_src(*ln);
+		print_src(*ln, prev_code);
 		if (++ln != lines.end()) {
 			end_line();
 		}
 	}
 }
 
-void ASTree::print_formatted_value(PycRef<ASTFormattedValue> formatted_value)
+void ASTree::print_formatted_value(PycRef<ASTFormattedValue> formatted_value, const PycRef<PycCode>& prev_code)
 {
 	pyc_output << "{";
-	print_src(formatted_value->val());
+	print_src(formatted_value->val(), prev_code);
 
 	switch (formatted_value->conversion()) {
 	case ASTFormattedValue::ConversionFlag::NONE:
@@ -142,35 +142,35 @@ bool ASTree::print_docstring(PycRef<PycObject> obj, int indent)
 	return false;
 }
 
-void ASTree::print_ordered(PycRef<ASTNode> parent, PycRef<ASTNode> child)
+void ASTree::print_ordered(PycRef<ASTNode> parent, PycRef<ASTNode> child, const PycRef<PycCode>& prev_code)
 {
 	if (child.type() == ASTNode::NODE_BINARY ||
 		child.type() == ASTNode::NODE_COMPARE) {
 		if (cmp_prec(parent, child) > 0) {
 			pyc_output << "(";
-			print_src(child);
+			print_src(child, prev_code);
 			pyc_output << ")";
 		}
 		else {
-			print_src(child);
+			print_src(child, prev_code);
 		}
 	}
 	else if (child.type() == ASTNode::NODE_UNARY) {
 		if (cmp_prec(parent, child) > 0) {
 			pyc_output << "(";
-			print_src(child);
+			print_src(child, prev_code);
 			pyc_output << ")";
 		}
 		else {
-			print_src(child);
+			print_src(child, prev_code);
 		}
 	}
 	else {
-		print_src(child);
+		print_src(child, prev_code);
 	}
 }
 
-void ASTree::print_src(PycRef<ASTNode> node)
+void ASTree::print_src(PycRef<ASTNode> node, const PycRef<PycCode>& prev_code)
 {
 	if (node == NULL) {
 		pyc_output << "None";
@@ -183,16 +183,16 @@ void ASTree::print_src(PycRef<ASTNode> node)
 	case ASTNode::NODE_COMPARE:
 	{
 		PycRef<ASTBinary> bin = node.cast<ASTBinary>();
-		print_ordered(node, bin->left());
+		print_ordered(node, bin->left(), prev_code);
 		pyc_output << bin->op_str();
-		print_ordered(node, bin->right());
+		print_ordered(node, bin->right(), prev_code);
 	}
 	break;
 	case ASTNode::NODE_UNARY:
 	{
 		PycRef<ASTUnary> un = node.cast<ASTUnary>();
 		pyc_output << un->op_str();
-		print_ordered(node, un->operand());
+		print_ordered(node, un->operand(), prev_code);
 	}
 	break;
 	case ASTNode::NODE_CALL:
@@ -206,14 +206,14 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			inComprehension = true;
 			comprehension_iterable = *call->pparams().begin();
 		}
-		print_src(call->func());
+		print_src(call->func(), prev_code);
 		if (!is_comp_lambda) {
 			pyc_output << "(";
 			bool first = true;
 			for (const auto& param : call->pparams()) {
 				if (!first)
 					pyc_output << ", ";
-				print_src(param);
+				print_src(param, prev_code);
 				first = false;
 			}
 			for (const auto& param : call->kwparams()) {
@@ -226,21 +226,21 @@ void ASTree::print_src(PycRef<ASTNode> node)
 					PycRef<PycString> str_name = param.first.cast<ASTObject>()->object().cast<PycString>();
 					pyc_output << str_name->value() << " = ";
 				}
-				print_src(param.second);
+				print_src(param.second, prev_code);
 				first = false;
 			}
 			if (call->hasVar()) {
 				if (!first)
 					pyc_output << ", ";
 				pyc_output << "*";
-				print_src(call->var());
+				print_src(call->var(), prev_code);
 				first = false;
 			}
 			if (call->hasKW()) {
 				if (!first)
 					pyc_output << ", ";
 				pyc_output << "**";
-				print_src(call->kw());
+				print_src(call->kw(), prev_code);
 				first = false;
 			}
 			pyc_output << ")";
@@ -250,30 +250,30 @@ void ASTree::print_src(PycRef<ASTNode> node)
 	case ASTNode::NODE_DELETE:
 	{
 		pyc_output << "del ";
-		print_src(node.cast<ASTDelete>()->value());
+		print_src(node.cast<ASTDelete>()->value(), prev_code);
 	}
 	break;
 	case ASTNode::NODE_EXEC:
 	{
 		PycRef<ASTExec> exec = node.cast<ASTExec>();
 		pyc_output << "exec ";
-		print_src(exec->statement());
+		print_src(exec->statement(), prev_code);
 
 		if (exec->globals() != NULL) {
 			pyc_output << " in ";
-			print_src(exec->globals());
+			print_src(exec->globals(), prev_code);
 
 			if (exec->locals() != NULL
 				&& exec->globals() != exec->locals()) {
 				pyc_output << ", ";
-				print_src(exec->locals());
+				print_src(exec->locals(), prev_code);
 			}
 		}
 	}
 	break;
 	case ASTNode::NODE_FORMATTEDVALUE:
 		pyc_output << "f" F_STRING_QUOTE;
-		print_formatted_value(node.cast<ASTFormattedValue>());
+		print_formatted_value(node.cast<ASTFormattedValue>(), prev_code);
 		pyc_output << F_STRING_QUOTE;
 		break;
 	case ASTNode::NODE_JOINEDSTR:
@@ -281,7 +281,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 		for (const auto& val : node.cast<ASTJoinedStr>()->values()) {
 			switch (val.type()) {
 			case ASTNode::NODE_FORMATTEDVALUE:
-				print_formatted_value(val.cast<ASTFormattedValue>());
+				print_formatted_value(val.cast<ASTFormattedValue>(), prev_code);
 				break;
 			case ASTNode::NODE_OBJECT:
 				// When printing a piece of the f-string, keep the quote style consistent.
@@ -308,7 +308,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			if (isUnpack) {
 				pyc_output << "*";
 			}
-			print_src(val);
+			print_src(val, prev_code);
 			first = false;
 		}
 		pyc_output << " ]";
@@ -325,7 +325,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			if (isUnpack) {
 				pyc_output << "*";
 			}
-			print_src(val);
+			print_src(val, prev_code);
 			first = false;
 		}
 		pyc_output << " }";
@@ -336,16 +336,16 @@ void ASTree::print_src(PycRef<ASTNode> node)
 		PycRef<ASTComprehension> comp = node.cast<ASTComprehension>();
 
 		pyc_output << "[ ";
-		print_src(comp->result());
+		print_src(comp->result(), prev_code);
 
 		for (const auto& gen : comp->generators()) {
 			pyc_output << " for ";
-			print_src(gen->index());
+			print_src(gen->index(), prev_code);
 			pyc_output << " in ";
-			print_src(gen->iter());
+			print_src(gen->iter(), prev_code);
 			if (gen->condition()) {
 				pyc_output << " if ";
-				print_src(gen->condition());
+				print_src(gen->condition(), prev_code);
 			}
 		}
 		pyc_output << " ]";
@@ -359,7 +359,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			if (!first)
 				pyc_output << ", ";
 			pyc_output << "**";
-			print_src(val);
+			print_src(val, prev_code);
 			first = false;
 		}
 		pyc_output << " }";
@@ -372,9 +372,9 @@ void ASTree::print_src(PycRef<ASTNode> node)
 		for (const auto& val : node.cast<ASTMap>()->values()) {
 			if (!first)
 				pyc_output << ", ";
-			print_src(val.first);
+			print_src(val.first, prev_code);
 			pyc_output << ": ";
-			print_src(val.second);
+			print_src(val.second, prev_code);
 			first = false;
 		}
 		pyc_output << " }";
@@ -391,14 +391,14 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			map->addBack(new ASTObject(keys[i]), values[i]);
 		}
 
-		print_src(map);
+		print_src(map, prev_code);
 	}
 	break;
 	case ASTNode::NODE_NAME:
 	{
 		if (inComprehension && strcmp(node.cast<ASTName>()->name()->value(), ".0") == 0) {
 			inComprehension = false;
-			print_src(comprehension_iterable);
+			print_src(comprehension_iterable, prev_code);
 		}
 		else {
 			pyc_output << node.cast<ASTName>()->name()->value();
@@ -413,7 +413,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			if (ln.cast<ASTNode>().type() != ASTNode::NODE_NODELIST) {
 				start_line(cur_indent);
 			}
-			print_src(ln);
+			print_src(ln, prev_code);
 			if (nodes_count) {
 				end_line();
 			}
@@ -455,7 +455,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				blk->append(blk.cast<ASTTryExceptBlock>()->getElseBlock().cast<ASTNode>());
 			}
 			end_line();
-			print_block(blk);
+			print_block(blk, prev_code);
 			end_line();
 			break;
 		}
@@ -469,13 +469,13 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			else
 				pyc_output << " ";
 
-			print_src(blk.cast<ASTCondBlock>()->cond());
+			print_src(blk.cast<ASTCondBlock>()->cond(), prev_code);
 		}
 		else if (blk->blktype() == ASTBlock::BLK_FOR || blk->blktype() == ASTBlock::BLK_ASYNCFOR) {
 			pyc_output << " ";
-			print_src(blk.cast<ASTIterBlock>()->index());
+			print_src(blk.cast<ASTIterBlock>()->index(), prev_code);
 			pyc_output << " in ";
-			print_src(blk.cast<ASTIterBlock>()->iter());
+			print_src(blk.cast<ASTIterBlock>()->iter(), prev_code);
 		}
 		else if (blk->blktype() == ASTBlock::BLK_EXCEPT)
 		{
@@ -493,27 +493,27 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			if (blk.cast<ASTExceptBlock>()->exceptType() != NULL)
 			{
 				pyc_output << " ";
-				print_src(blk.cast<ASTExceptBlock>()->exceptType());
+				print_src(blk.cast<ASTExceptBlock>()->exceptType(), prev_code);
 				if (blk.cast<ASTExceptBlock>()->exceptAs() != NULL)
 				{
 					pyc_output << " as ";
-					print_src(blk.cast<ASTExceptBlock>()->exceptAs());
+					print_src(blk.cast<ASTExceptBlock>()->exceptAs(), prev_code);
 				}
 			}
 		}
 		else if (blk->blktype() == ASTBlock::BLK_WITH) {
 			pyc_output << " ";
-			print_src(blk.cast<ASTWithBlock>()->expr());
+			print_src(blk.cast<ASTWithBlock>()->expr(), prev_code);
 			PycRef<ASTNode> var = blk.try_cast<ASTWithBlock>()->var();
 			if (var != NULL) {
 				pyc_output << " as ";
-				print_src(var);
+				print_src(var, prev_code);
 			}
 		}
 		pyc_output << ":\n";
 
 		cur_indent++;
-		print_block(blk);
+		print_block(blk, prev_code);
 		cur_indent--;
 	}
 	break;
@@ -544,14 +544,14 @@ void ASTree::print_src(PycRef<ASTNode> node)
 		bool first = true;
 		if (node.cast<ASTPrint>()->stream() != nullptr) {
 			pyc_output << ">>";
-			print_src(node.cast<ASTPrint>()->stream());
+			print_src(node.cast<ASTPrint>()->stream(), prev_code);
 			first = false;
 		}
 
 		for (const auto& val : node.cast<ASTPrint>()->values()) {
 			if (!first)
 				pyc_output << ", ";
-			print_src(val);
+			print_src(val, prev_code);
 			first = false;
 		}
 		if (!node.cast<ASTPrint>()->eol())
@@ -562,10 +562,10 @@ void ASTree::print_src(PycRef<ASTNode> node)
 	{
 		PycRef<ASTRaise> raise = node.cast<ASTRaise>();
 		pyc_output << "raise ";
-		print_src(raise->exception());
+		print_src(raise->exception(), prev_code);
 		if (raise->hasExceptionCause()) {
 			pyc_output << " from ";
-			print_src(raise->exceptionCause());
+			print_src(raise->exceptionCause(), prev_code);
 		}
 	}
 	break;
@@ -592,7 +592,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				break;
 			}
 		}
-		print_src(value);
+		print_src(value, prev_code);
 	}
 	break;
 	case ASTNode::NODE_SLICE:
@@ -600,11 +600,11 @@ void ASTree::print_src(PycRef<ASTNode> node)
 		PycRef<ASTSlice> slice = node.cast<ASTSlice>();
 
 		if (slice->op() & ASTSlice::SLICE1) {
-			print_src(slice->left());
+			print_src(slice->left(), prev_code);
 		}
 		pyc_output << ":";
 		if (slice->op() & ASTSlice::SLICE2) {
-			print_src(slice->right());
+			print_src(slice->right(), prev_code);
 		}
 	}
 	break;
@@ -616,19 +616,19 @@ void ASTree::print_src(PycRef<ASTNode> node)
 
 			pyc_output << "from ";
 			if (import->name().type() == ASTNode::NODE_IMPORT)
-				print_src(import->name().cast<ASTImport>()->name());
+				print_src(import->name().cast<ASTImport>()->name(), prev_code);
 			else
-				print_src(import->name());
+				print_src(import->name(), prev_code);
 			pyc_output << " import ";
 
 			if (stores.size() == 1) {
 				auto src = stores.front()->src();
 				auto dest = stores.front()->dest();
-				print_src(src);
+				print_src(src, prev_code);
 
 				if (src.cast<ASTName>()->name()->value() != dest.cast<ASTName>()->name()->value()) {
 					pyc_output << " as ";
-					print_src(dest);
+					print_src(dest, prev_code);
 				}
 			}
 			else {
@@ -636,19 +636,19 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				for (const auto& st : stores) {
 					if (!first)
 						pyc_output << ", ";
-					print_src(st->src());
+					print_src(st->src(), prev_code);
 					first = false;
 
 					if (st->src().cast<ASTName>()->name()->value() != st->dest().cast<ASTName>()->name()->value()) {
 						pyc_output << " as ";
-						print_src(st->dest());
+						print_src(st->dest(), prev_code);
 					}
 				}
 			}
 		}
 		else {
 			pyc_output << "import ";
-			print_src(import->name());
+			print_src(import->name(), prev_code);
 		}
 	}
 	break;
@@ -670,7 +670,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				pyc_output << code_src->getLocal(narg++)->value();
 				if ((code_src->argCount() - i) <= (int)defargs.size()) {
 					pyc_output << " = ";
-					print_src(*da++);
+					print_src(*da++, prev_code);
 				}
 			}
 			da = kwdefargs.cbegin();
@@ -681,7 +681,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 					pyc_output << code_src->getLocal(narg++)->value();
 					if ((code_src->kwOnlyArgCount() - i) <= (int)kwdefargs.size()) {
 						pyc_output << " = ";
-						print_src(*da++);
+						print_src(*da++, prev_code);
 					}
 				}
 			}
@@ -689,7 +689,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 		}
 
 		inLambda = true;
-		print_src(code);
+		print_src(code, prev_code);
 		inLambda = false;
 
 		if (!is_lambda_a_comprehension) {
@@ -709,7 +709,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			if (strcmp(code_src->name()->value(), "<lambda>") == 0) {
 				pyc_output << "\n";
 				start_line(cur_indent);
-				print_src(dest);
+				print_src(dest, prev_code);
 				pyc_output << " = lambda ";
 				isLambda = true;
 			}
@@ -719,7 +719,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				if (code_src->flags() & PycCode::CO_COROUTINE)
 					pyc_output << "async ";
 				pyc_output << "def ";
-				print_src(dest);
+				print_src(dest, prev_code);
 				pyc_output << "(";
 			}
 
@@ -742,7 +742,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				}
 				if ((code_src->argCount() - i) <= (int)defargs.size()) {
 					pyc_output << " = ";
-					print_src(*da++);
+					print_src(*da++, prev_code);
 				}
 			}
 			da = kwdefargs.cbegin();
@@ -759,7 +759,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 					}
 					if ((code_src->kwOnlyArgCount() - i) <= (int)kwdefargs.size()) {
 						pyc_output << " = ";
-						print_src(*da++);
+						print_src(*da++, prev_code);
 					}
 				}
 			}
@@ -785,7 +785,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			bool preLambda = inLambda;
 			inLambda |= isLambda;
 
-			print_src(code);
+			print_src(code, prev_code);
 
 			inLambda = preLambda;
 		}
@@ -793,7 +793,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			pyc_output << "\n";
 			start_line(cur_indent);
 			pyc_output << "class ";
-			print_src(dest);
+			print_src(dest, prev_code);
 			PycRef<ASTTuple> bases = src.cast<ASTClass>()->bases().cast<ASTTuple>();
 			if (bases->values().size() > 0) {
 				pyc_output << "(";
@@ -801,7 +801,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				for (const auto& val : bases->values()) {
 					if (!first)
 						pyc_output << ", ";
-					print_src(val);
+					print_src(val, prev_code);
 					first = false;
 				}
 				pyc_output << "):\n";
@@ -813,7 +813,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			printClassDocstring = true;
 			PycRef<ASTNode> code = src.cast<ASTClass>()->code().cast<ASTCall>()
 				->func().cast<ASTFunction>()->code();
-			print_src(code);
+			print_src(code, prev_code);
 		}
 		else if (src.type() == ASTNode::NODE_IMPORT) {
 			PycRef<ASTImport> import = src.cast<ASTImport>();
@@ -822,9 +822,9 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				if (fromlist != Pyc_None) {
 					pyc_output << "from ";
 					if (import->name().type() == ASTNode::NODE_IMPORT)
-						print_src(import->name().cast<ASTImport>()->name());
+						print_src(import->name().cast<ASTImport>()->name(), prev_code);
 					else
-						print_src(import->name());
+						print_src(import->name(), prev_code);
 					pyc_output << " import ";
 					if (fromlist.type() == PycObject::TYPE_TUPLE ||
 						fromlist.type() == PycObject::TYPE_SMALL_TUPLE) {
@@ -842,51 +842,51 @@ void ASTree::print_src(PycRef<ASTNode> node)
 				}
 				else {
 					pyc_output << "import ";
-					print_src(import->name());
+					print_src(import->name(), prev_code);
 				}
 			}
 			else {
 				pyc_output << "import ";
 				PycRef<ASTNode> import_name = import->name();
-				print_src(import_name);
+				print_src(import_name, prev_code);
 				if (!dest.cast<ASTName>()->name()->isEqual(import_name.cast<ASTName>()->name().cast<PycObject>())) {
 					pyc_output << " as ";
-					print_src(dest);
+					print_src(dest, prev_code);
 				}
 			}
 		}
 		else if (src.type() == ASTNode::NODE_BINARY
 			&& src.cast<ASTBinary>()->is_inplace()) {
-			print_src(src);
+			print_src(src, prev_code);
 		}
 		else {
-			print_src(dest);
+			print_src(dest, prev_code);
 			pyc_output << " = ";
-			print_src(src);
+			print_src(src, prev_code);
 		}
 	}
 	break;
 	case ASTNode::NODE_CHAINSTORE:
 	{
 		for (auto& dest : node.cast<ASTChainStore>()->nodes()) {
-			print_src(dest);
+			print_src(dest, prev_code);
 			pyc_output << " = ";
 		}
-		print_src(node.cast<ASTChainStore>()->src());
+		print_src(node.cast<ASTChainStore>()->src(), prev_code);
 	}
 	break;
 	case ASTNode::NODE_SUBSCR:
 	{
-		print_src(node.cast<ASTSubscr>()->name());
+		print_src(node.cast<ASTSubscr>()->name(), prev_code);
 		pyc_output << "[";
-		print_src(node.cast<ASTSubscr>()->key());
+		print_src(node.cast<ASTSubscr>()->key(), prev_code);
 		pyc_output << "]";
 	}
 	break;
 	case ASTNode::NODE_CONVERT:
 	{
 		pyc_output << "`";
-		print_src(node.cast<ASTConvert>()->name());
+		print_src(node.cast<ASTConvert>()->name(), prev_code);
 		pyc_output << "`";
 	}
 	break;
@@ -903,7 +903,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 			if (tuple->isUnpack()) {
 				pyc_output << "*";
 			}
-			print_src(val);
+			print_src(val, prev_code);
 			first = false;
 		}
 		if (values.size() == 1)
@@ -920,7 +920,7 @@ void ASTree::print_src(PycRef<ASTNode> node)
 
 		pyc_output << name->object().cast<PycString>()->value();
 		pyc_output << ": ";
-		print_src(annotation);
+		print_src(annotation, prev_code);
 	}
 	break;
 	case ASTNode::NODE_TERNARY:
@@ -935,14 +935,14 @@ void ASTree::print_src(PycRef<ASTNode> node)
 		 */
 		PycRef<ASTTernary> ternary = node.cast<ASTTernary>();
 		//pyc_output << "(";
-		print_src(ternary->if_expr());
+		print_src(ternary->if_expr(), prev_code);
 		const auto if_block = ternary->if_block().cast<ASTCondBlock>();
 		pyc_output << " if ";
 		if (if_block->negative())
 			pyc_output << "not ";
-		print_src(if_block->cond());
+		print_src(if_block->cond(), prev_code);
 		pyc_output << " else ";
-		print_src(ternary->else_expr());
+		print_src(ternary->else_expr(), prev_code);
 		//pyc_output << ")";
 	}
 	break;
@@ -1047,7 +1047,7 @@ void ASTree::decompyle(PycRef<PycCode> new_code)
 		printDocstringAndGlobals = false;
 	}
 
-	print_src(source);
+	print_src(source, new_code);
 
 	if (!cleanBuild || !part1clean) {
 		start_line(cur_indent);
