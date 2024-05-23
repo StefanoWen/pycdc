@@ -632,6 +632,9 @@ public:
 	PycRef<ASTNode> cond() const { return m_cond; }
 	bool negative() const { return m_negative; }
 
+	void setCond(PycRef<ASTNode> cond) { m_cond = std::move(cond); }
+	void setNegative(const bool& negative) { m_negative = negative; }
+
 private:
 	PycRef<ASTNode> m_cond;
 	bool m_negative;

@@ -248,16 +248,15 @@ void BuildFromCode::switchOpcode()
 			offs += pos;
 		}
 
-		if (curblock->blktype() == ASTBlock::BLK_IF
-			&& (curblock->end() == offs || curblock->end() == pos))
+		if (curblock->blktype() == ASTBlock::BLK_IF && !curblock->size())
 		{
 			PycRef<ASTCondBlock> prevCondBlk = curblock.cast<ASTCondBlock>();
 			pop_top_block();
 			PycRef<ASTNode> prevCond = prevCondBlk.cast<ASTCondBlock>()->cond();
 			bool prevCondNeg = prevCondBlk.cast<ASTCondBlock>()->negative();
-			ASTBinary::BinOp binType = (prevCondBlk->end() == offs) ? ASTBinary::BIN_LOG_AND : ASTBinary::BIN_LOG_OR;
-			if ((prevCondBlk->end() == offs && prevCondNeg) ||
-				(prevCondBlk->end() == pos && !prevCondNeg)) {
+			ASTBinary::BinOp binType = (prevCondBlk->end() == pos) ? ASTBinary::BIN_LOG_OR : ASTBinary::BIN_LOG_AND;
+			if ((prevCondBlk->end() == pos && !prevCondNeg) || // not prev_cond or cond
+				(prevCondBlk->end() != pos && prevCondNeg)) { // not prev_cond and cond
 				// if not prev_cond and cond
 				prevCond = new ASTUnary(prevCond, ASTUnary::UN_NOT);
 			}
@@ -425,6 +424,13 @@ PycRef<ASTNode> BuildFromCode::pop_top()
 
 void BuildFromCode::pop_append_top_block()
 {
+	if (curblock->blktype() == ASTBlock::BLK_IF &&
+		curblock.cast<ASTCondBlock>()->negative() &&
+		curblock.cast<ASTCondBlock>()->cond().type() == ASTNode::NODE_BINARY) {
+		PycRef<ASTBinary> cond = curblock.cast<ASTCondBlock>()->cond().cast<ASTBinary>();
+		curblock.cast<ASTCondBlock>()->setCond(new ASTBinary(cond->left(), new ASTUnary(cond->right(), ASTUnary::UN_NOT), cond->op()));
+		curblock.cast<ASTCondBlock>()->setNegative(false);
+	}
 	while (curblock->nodes().back().type() == ASTNode::NODE_RETURN) {
 		PycRef<ASTReturn> ret = curblock->nodes().back().cast<ASTReturn>();
 
