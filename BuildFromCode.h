@@ -47,6 +47,8 @@ private:
 	void checker();
 	void switchOpcode();
 	PycRef<ASTNode> pop_top();
+	bool isElseAnElif();
+	void checkBlock();
 	void pop_append_top_block();
 	PycRef<ASTBlock> pop_top_block();
 	void push_block(PycRef<ASTBlock> newBlk);

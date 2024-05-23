@@ -599,6 +599,7 @@ public:
 	PycRef<ASTNode> getLastNode() const;
 	void extractInnerOfFirstBlock();
 	void moveNodesFromAnother(PycRef<ASTBlock> otherBlock);
+	void appendNodesFromAnother(PycRef<ASTBlock> otherBlock);
 	bool hasOnlyBlockOf(BlkType blktype);
 	void append(PycRef<ASTNode> node) { m_nodes.emplace_back(std::move(node)); }
 	const char* type_str() const;
@@ -608,6 +609,7 @@ public:
 	virtual void init(int init) { m_inited = init; }
 
 	void setEnd(int end) { m_end = end; }
+	void setBlktype(const BlkType& blktype) { m_blktype = blktype; }
 
 private:
 	BlkType m_blktype;

@@ -231,6 +231,15 @@ void ASTBlock::moveNodesFromAnother(PycRef<ASTBlock> otherBlock)
 	m_nodes = std::move(otherBlock->m_nodes);
 }
 
+void ASTBlock::appendNodesFromAnother(PycRef<ASTBlock> otherBlock)
+{
+	const ASTBlock::list_t& otherNodes = otherBlock->nodes();
+	ASTBlock::list_t::const_iterator otherNodesEnd = otherNodes.end();
+	for (ASTBlock::list_t::const_iterator it = otherNodes.begin(); it != otherNodesEnd; it++) {
+		this->append(*it);
+	}
+}
+
 bool ASTBlock::hasOnlyBlockOf(BlkType blktype)
 {
 	return (

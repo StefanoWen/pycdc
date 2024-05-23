@@ -36,7 +36,7 @@ def func4():
 
 def func5():
 	a = 1
-	if not a < 2 and a < 1:
+	if not (a < 2) and a < 1:
 		print('<2')
 	else:
 		print('else')
@@ -44,7 +44,7 @@ def func5():
 
 def func6():
 	a = 1
-	if a < 2 and not a < 1:
+	if a < 2 and not (a < 1):
 		print('<2')
 	else:
 		print('else')
@@ -60,7 +60,7 @@ def func7():
 
 def func8():
 	a = 1
-	if not a < 2 or a < 1:
+	if not (a < 2) or a < 1:
 		print('<2')
 	else:
 		print('else')
@@ -68,7 +68,7 @@ def func8():
 
 def func9():
 	a = 1
-	if a < 2 or not a < 1:
+	if a < 2 or not (a < 1):
 		print('<2')
 	else:
 		print('else')
@@ -83,7 +83,6 @@ def func10():
 	else:
 		print('else')
 	print('end')
-
 a = 1
 if a > 2:
 	print('a>2')

@@ -91,7 +91,14 @@ void BuildFromCode::bc_update()
 void BuildFromCode::checker()
 {
 	while (curblock->end() == curpos) {
-		pop_append_top_block();
+		if (isElseAnElif()) {
+			PycRef<ASTBlock> elseBlk = curblock;
+			pop_top_block();
+			elseBlk->nodes().front().cast<ASTBlock>()->setBlktype(ASTBlock::BLK_ELIF); // change if block to elif
+			curblock->appendNodesFromAnother(elseBlk);
+		} else {
+			pop_append_top_block();
+		}
 	}
 }
 
@@ -425,7 +432,28 @@ PycRef<ASTNode> BuildFromCode::pop_top()
 	return tos;
 }
 
-void BuildFromCode::pop_append_top_block()
+bool BuildFromCode::isElseAnElif()
+{
+	bool isElif = false;
+	if (curblock->blktype() == ASTBlock::BLK_ELSE) {
+		const ASTBlock::list_t& elseNodes = curblock->nodes();
+		ASTBlock::list_t::const_iterator it = elseNodes.begin();
+		ASTBlock::list_t::const_iterator elseNodesEnd = elseNodes.end();
+		isElif = it->type() == ASTNode::NODE_BLOCK && it->cast<ASTBlock>()->blktype() == ASTBlock::BLK_IF;
+		it++;
+		while (it != elseNodesEnd && isElif) {
+			isElif = it->type() == ASTNode::NODE_BLOCK && it->cast<ASTBlock>()->blktype() == ASTBlock::BLK_ELIF;
+			if (isElif) {
+				it++;
+			} else {
+				isElif = it->type() == ASTNode::NODE_BLOCK && it->cast<ASTBlock>()->blktype() == ASTBlock::BLK_ELSE && ++it == elseNodesEnd;
+			}
+		}
+	}
+	return isElif;
+}
+
+void BuildFromCode::checkBlock()
 {
 	if (curblock->blktype() == ASTBlock::BLK_IF &&
 		curblock.cast<ASTCondBlock>()->negative() &&
@@ -441,6 +469,11 @@ void BuildFromCode::pop_append_top_block()
 			curblock->removeLast();  // Always an extraneous return statement
 		}
 	}
+}
+
+void BuildFromCode::pop_append_top_block()
+{
+	checkBlock();
 	blocks.pop();
 	blocks.top()->append(curblock.cast<ASTNode>());
 	curblock = blocks.top();
