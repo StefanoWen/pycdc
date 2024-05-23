@@ -1,3 +1,4 @@
+a = 1
 def func1():
 	a = 1
 	if a < 2:
@@ -83,87 +84,110 @@ def func10():
 	else:
 		print('else')
 	print('end')
-a = 1
-if a > 2:
-	print('a>2')
-if a < 2:
-	print('a<2')
-else:
-	print('else')
-if a == 2:
-	print('a==2')
-elif a > 2:
-	print('a>2')
-else:
-	print('else')
-if a == 1 and a == 2:
-	print('a==1 and a==2')
-if a == 1 and a == 2:
-	print('a==1 and a==2')
-else:
-	print('else')
-if a == 1:
-	print('a==1')
-	if a == 2:
-		print('a==2')
-if a == 1:
-	print('a==1')
-	if a == 2:
-		print('a==2')
-else:
-	print('else')
-if a == 1:
-	print('a==1')
-	if a == 2:
-		print('a==2')
+
+def func11():
+	if a > 2:
+		print('a>2')
+	if a < 2:
+		print('a<2')
 	else:
-		print('a!=2')
-if a == 1:
-	print('a==1')
+		print('else')
+
+def func12():
 	if a == 2:
 		print('a==2')
+	elif a > 2:
+		print('a>2')
 	else:
-		print('a!=2')
-else:
-	print('a!=1')
-if not a == 1:
-	print('not a==1')
-if not a < 2 and a < 1:
-	print('not a<2 and a<1')
-else:
-	print('else')
-if a < 2 and not a < 1:
-	print('a<2 and not a<1')
-else:
-	print('else')
-if not (a == 1 and a == 2):
-	print('not (a==1 and a==2)')
-if a == 1 or a == 2:
-	print('a==1 or a==2')
-if a == 1 or a == 2:
-	print('a==1 or a==2')
-else:
-	print('else')
-if not (a == 1 or a == 2):
-	print('not (a==1 or a==2)')
-if not a == 1 or a == 2:
-	print('not a==1 or a==2')
-if not a == 1 or a == 2:
-	print('not a==1 or a==2')
-else:
-	print('else')
-if a == 1 or not a == 2:
-	print('a==1 or not a==2')
-if a == 1 or not a == 2:
-	print('a==1 or not a==2')
-else:
-	print('else')
-if (a == 1 and a == 2) or a == 3:
-	print('(a==1 and a==2) or a==3')
-if (a == 1 or a == 2) and a == 3:
-	print('(a==1 or a==2) and a==3')
-if (a == 1 or a == 2) and not a == 3:
-	print('(a==1 or a==2) and not a==3')
+		print('else')
+
+def func13():
+	if a == 1 and a == 2:
+		print('a==1 and a==2')
+	if a == 1 and a == 2:
+		print('a==1 and a==2')
+	else:
+		print('else')
+
+def func14():
+	if a == 1:
+		print('a==1')
+		if a == 2:
+			print('a==2')
+	if a == 1:
+		print('a==1')
+		if a == 2:
+			print('a==2')
+	else:
+		print('else')
+
+def func15():
+	if a == 1:
+		print('a==1')
+		if a == 2:
+			print('a==2')
+		else:
+			print('a!=2')
+
+def func16():
+	if a == 1:
+		print('a==1')
+		if a == 2:
+			print('a==2')
+		else:
+			print('a!=2')
+	else:
+		print('a!=1')
+
+def func17():
+	if not a == 1:
+		print('not a==1')
+	if not (a < 2) and a < 1:
+		print('not a<2 and a<1')
+	else:
+		print('else')
+
+def func18():
+	if a < 2 and not (a < 1):
+		print('a<2 and not a<1')
+	else:
+		print('else')
+	if not (a == 1) or not (a == 2):
+		print('not (a==1 and a==2)')
+
+def func19():
+	if a == 1 or a == 2:
+		print('a==1 or a==2')
+	if a == 1 or a == 2:
+		print('a==1 or a==2')
+	else:
+		print('else')
+
+def func20():
+	if not (a == 1) and not (a == 2):
+		print('not (a==1 or a==2)')
+	if not (a == 1) or a == 2:
+		print('not a==1 or a==2')
+	if not (a == 1) or a == 2:
+		print('not a==1 or a==2')
+	else:
+		print('else')
+
+def func21():
+	if a == 1 or not (a == 2):
+		print('a==1 or not a==2')
+	if a == 1 or not (a == 2):
+		print('a==1 or not a==2')
+	else:
+		print('else')
+
+def func22():
+	if (a == 1 and a == 2) or a == 3:
+		print('(a==1 and a==2) or a==3')
+	if (a == 1 or a == 2) and a == 3:
+		print('(a==1 or a==2) and a==3')
+	if (a == 1 or a == 2) and not (a == 3):
+		print('(a==1 or a==2) and not a==3')
 a = 1
 b = 2
 c = a and b
