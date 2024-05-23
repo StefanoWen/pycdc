@@ -7,6 +7,7 @@ import sys
 import re
 import time
 import argparse
+import difflib
 
 WHITE_COLOR = 'white'
 LRED_COLOR = 'light_red'
@@ -212,7 +213,7 @@ def check_stdout_failed(source_file, decompiled_source_file_contents):
 		# replace tabs with spaces on source files
 		source_file_contents = source_file_contents.replace('\t', ' '*4)
 		# strip lines and remove empty lines
-		source_file_contents = '\n'.join(list(filter(lambda x: x.strip(), source_file_contents.split('\n'))))
+		source_file_contents = '\n'.join(list(filter(lambda x: x.strip() and not x[0] == '#', source_file_contents.split('\n'))))
 		source_files_contents[source_file.name] = source_file_contents
 	
 	# remove first commment lines on decompiled source files
