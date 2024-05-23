@@ -1011,7 +1011,7 @@ void ASTree::decompyle(PycRef<PycCode> new_code)
 					clean->removeFirst();
 			}
 		}
-		if (clean->nodes().back().type() == ASTNode::NODE_RETURN) {
+		while (clean->nodes().back().type() == ASTNode::NODE_RETURN) {
 			PycRef<ASTReturn> ret = clean->nodes().back().cast<ASTReturn>();
 
 			if (ret->value() == NULL || ret->value().type() == ASTNode::NODE_LOCALS) {

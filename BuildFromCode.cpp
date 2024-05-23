@@ -425,6 +425,13 @@ PycRef<ASTNode> BuildFromCode::pop_top()
 
 void BuildFromCode::pop_append_top_block()
 {
+	while (curblock->nodes().back().type() == ASTNode::NODE_RETURN) {
+		PycRef<ASTReturn> ret = curblock->nodes().back().cast<ASTReturn>();
+
+		if (ret->value() == NULL || ret->value().type() == ASTNode::NODE_LOCALS) {
+			curblock->removeLast();  // Always an extraneous return statement
+		}
+	}
 	blocks.pop();
 	blocks.top()->append(curblock.cast<ASTNode>());
 	curblock = blocks.top();
