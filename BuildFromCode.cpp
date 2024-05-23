@@ -164,7 +164,7 @@ void BuildFromCode::switchOpcode()
 				astValues.push_back(new ASTObject(pycValues[i]));
 			}
 			PycRef<ASTNode> astTuple = new ASTTuple(astValues);
-			stack.push(astTuple); 
+			stack.push(astTuple);
 		} else if (t_ob->object().type() == PycObject::TYPE_NONE) {
 			stack.push(NULL);
 		} else {
@@ -315,7 +315,7 @@ void BuildFromCode::switchOpcode()
 			// def func(x: int, y: str) would create tuple like this: ('x', int, 'y', str)
 			const ASTTuple::value_t annotTupleValues = pop_top().cast<ASTTuple>()->values();
 			size_t annotTupleValues_size = annotTupleValues.size();
-			for (size_t i = 0; i < annotTupleValues_size-1; i+=2) {
+			for (size_t i = 0; i < annotTupleValues_size - 1; i += 2) {
 				PycRef<PycString> varname_str = annotTupleValues[i].cast<ASTObject>()->object().cast<PycString>();
 				PycRef<ASTName> varname = new ASTName(varname_str);
 				annotMap.emplace_back(std::move(varname), std::move(annotTupleValues[i + 1].cast<ASTName>()));
@@ -406,10 +406,13 @@ void BuildFromCode::switchOpcode()
 		std::reverse(values.begin(), values.end());
 		stack.push(new ASTConstMap(keys, values));
 	}
-	case Pyc::MAKE_CELL_A: {
+	break;
+	case Pyc::MAKE_CELL_A:
+	{
 		PycRef<PycString> varname = code->getCellVar(mod, operand);
 		code->markCellToBeUsed(varname);
 	}
+	break;
 	case Pyc::NOP:
 	case Pyc::RESUME_A:
 	case Pyc::CACHE:
