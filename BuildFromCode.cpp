@@ -227,9 +227,15 @@ void BuildFromCode::switchOpcode()
 	}
 	break;
 	case Pyc::POP_JUMP_IF_FALSE_A:
+	case Pyc::POP_JUMP_IF_TRUE_A:
 	{
 		PycRef<ASTNode> cond = stack.top();
 		PycRef<ASTCondBlock> condBlk;
+
+		if (opcode == Pyc::POP_JUMP_IF_FALSE_A ||
+			opcode == Pyc::POP_JUMP_IF_TRUE_A) {
+			stack.pop(); // pop the cond from the stack
+		}
 
 		/* "Jump if true" means "Jump if not false" */
 		bool neg = opcode == Pyc::POP_JUMP_IF_TRUE_A;
