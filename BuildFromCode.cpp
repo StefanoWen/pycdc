@@ -274,6 +274,9 @@ void BuildFromCode::switchOpcode()
 			offs *= sizeof(uint16_t); // // BPO-27129
 		int target = offs + pos;
 
+		while (curblock->blktype() == ASTBlock::BLK_IF && curblock->end() == target) {
+			pop_append_top_block();
+		}
 		if (curblock->blktype() == ASTBlock::BLK_IF && curblock->end() == pos) {
 			pop_append_top_block();
 			PycRef<ASTBlock> elseBlk = new ASTBlock(ASTBlock::BLK_ELSE, target);
