@@ -93,8 +93,8 @@ else:
 	print('else')
 if a == 2:
 	print('a==2')
-elif a % 2 == 0:
-	print('a%2==0')
+elif a > 2:
+	print('a>2')
 else:
 	print('else')
 if a == 1 and a == 2:
