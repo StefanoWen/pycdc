@@ -226,11 +226,10 @@ def check_stdout_failed(source_file, decompiled_source_file_contents):
 			print_info('-', '%s %s' % (colored('Failed', LRED_COLOR), colored('(Different stdout)', LMAGENTA_COLOR)), source_file.name, max_align_need)
 			# putting a lot of prints so i can switch to .encode() easily
 			if debug:
-				print('-----------------')
-				print(source_files_contents[source_file.name])
-				print('=================')
-				print(decompiled_source_file_contents)
-				print('-----------------')
+				print('-----------DIFF-----------')
+				for diff_line in list(difflib.context_diff(source_files_contents[source_file.name].split('\n'), decompiled_source_file_contents.split('\n'), n=1))[3:]:
+					print(diff_line)
+				print('-----------DIFF------------')
 		return True
 	return False
 
