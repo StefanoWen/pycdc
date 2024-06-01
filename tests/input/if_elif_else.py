@@ -184,6 +184,16 @@ def func21():
 def func22():
 	if (a == 1 and a == 2) or a == 3:
 		print('(a==1 and a==2) or a==3')
+	if (a == 1 and (a == 2 or a == 3)) or a == 4:
+		print('(a==1 and (a==2 or a==3)) or a==4')
+	if (not a == 1 and (a == 2 or a == 3)) or a == 4:
+		print('(not a==1 and (a==2 or a==3)) or a==4')
+	if (a == 1 and (not a == 2 or a == 3)) or a == 4:
+		print('(a==1 and (not a==2 or a==3)) or a==4')
+	if (a == 1 and (a == 2 or not a == 3)) or a == 4:
+		print('(a==1 and (a==2 or not a==3)) or a==4')
+	if (a == 1 and (a == 2 or a == 3)) or not a == 4:
+		print('(a==1 and (a==2 or a==3)) or not a==4')
 	if (a == 1 or a == 2) and a == 3:
 		print('(a==1 or a==2) and a==3')
 	if (a == 1 or a == 2) and not (a == 3):
