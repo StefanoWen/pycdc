@@ -6,7 +6,7 @@ def try_except():
 		print('start except')
 		print('end except')
 
-def try_except_covering():
+def try_except_cover():
 	print('start')
 	
 	try:
@@ -29,7 +29,7 @@ def try_except_else():
 		print('start else')
 		print('end else')
 
-def try_except_else_covering():
+def try_except_else_cover():
 	print('start')
 	
 	try:
@@ -58,7 +58,7 @@ def try_except_else_finally():
 		print('start finally')
 		print('end finally')
 
-def try_except_else_finally_covering():
+def try_except_else_finally_cover():
 	print('start')
 	
 	try:
@@ -87,7 +87,7 @@ def try_except_except():
 		print('start except2')
 		print('end except2')
 
-def try_except_except_covering():
+def try_except_except_cover():
 	print('start')
 	
 	try:
@@ -116,7 +116,7 @@ def try_except_except_else():
 		print('start else')
 		print('end else')
 
-def try_except_except_else_covering():
+def try_except_except_else_cover():
 	print('start')
 	
 	try:
@@ -151,7 +151,7 @@ def try_except_except_else_finally():
 		print('start finally')
 		print('end finally')
 
-def try_except_except_else_finally_covering():
+def try_except_except_else_finally_cover():
 	print('start')
 	
 	try:
@@ -186,7 +186,7 @@ def try_except_except_finally():
 		print('start finally')
 		print('end finally')
 
-def try_except_except_finally_covering():
+def try_except_except_finally_cover():
 	print('start')
 	
 	try:
@@ -215,7 +215,7 @@ def try_except_finally():
 		print('start finally')
 		print('end finally')
 
-def try_except_finally_covering():
+def try_except_finally_cover():
 	print('start')
 	
 	try:
@@ -238,7 +238,7 @@ def try_except_match():
 		print('start except')
 		print('end except')
 
-def try_except_match_covering():
+def try_except_match_cover():
 	print('start')
 	
 	try:
@@ -258,7 +258,7 @@ def try_except_match_as():
 		print('start except')
 		print('end except')
 
-def try_except_match_as_covering():
+def try_except_match_as_cover():
 	print('start')
 	
 	try:
@@ -278,7 +278,7 @@ def try_finally():
 		print('start finally')
 		print('end finally')
 
-def try_finally_covering():
+def try_finally_cover():
 	print('start')
 	
 	try:
