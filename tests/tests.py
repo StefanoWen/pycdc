@@ -1,4 +1,4 @@
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, TimeoutExpired as subprocess_TimeoutExpired
 import os
 from pathlib import Path
 import glob
@@ -6,6 +6,8 @@ import shutil
 import sys
 import re
 import time
+import argparse
+import difflib
 
 WHITE_COLOR = 'white'
 LRED_COLOR = 'light_red'
@@ -22,11 +24,31 @@ BLUE_COLOR = 'blue'
 CYAN_COLOR = 'cyan'
 MAGENTA_COLOR = 'magenta'
 
+versions = {
+		'3': ['0',
+		'1',
+		'2',
+		'3',
+		'4',
+		'5',
+		'6',
+		'7',
+		'8',
+		'9',
+		'10',
+		'11',
+		'12'
+		]}
+
 def run_cmd(cmd, with_output=False, with_err=False):
 	proc = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
-	cmd_stdout, cmd_stderr = proc.communicate()
-	cmd_stdout = cmd_stdout.decode().replace('\r', '')
-	cmd_stderr = cmd_stderr.decode().replace('\r', '')
+	try:
+		cmd_stdout, cmd_stderr = proc.communicate(timeout=3)
+		cmd_stdout = cmd_stdout.decode().replace('\r', '')
+		cmd_stderr = cmd_stderr.decode().replace('\r', '')
+	except subprocess_TimeoutExpired:
+		cmd_stdout = ''
+		cmd_stderr, proc.returncode = 'subprocess timed out.', 1
 	if with_err and with_output:
 		return cmd_stdout, cmd_stderr, proc.returncode
 	elif with_err:
@@ -75,7 +97,7 @@ def create_dir_if_not_exists(dir_path):
 	if not os.path.isdir(dir_path):
 		os.makedirs(dir_path)
 
-def compile(input_dir, compiled_dir, versions, file_basename_exp):
+def compile(input_dir, compiled_dir, file_basename_exp):
 	def get_python_versions_dir():
 		return Path(run_cmd('where python', True).split('\n')[0]).parent.parent
 	
@@ -124,7 +146,7 @@ def compile(input_dir, compiled_dir, versions, file_basename_exp):
 	if os.path.isdir(pycache_dir):
 		os.rmdir(pycache_dir)
 
-def decompile(compiled_dir, decompiled_dir, versions, file_basename_exp, pycdc_path):
+def decompile(compiled_dir, decompiled_dir, file_basename_exp, pycdc_path):
 	def get_decompiled_output(pyc_file):
 		cmd_in = '"{}" "{}"'.format(pycdc_path, pyc_file)
 		cmd_out, cmd_err, retcode = run_cmd(cmd_in, True, True)
@@ -195,7 +217,7 @@ def check_stdout_failed(source_file, decompiled_source_file_contents):
 		# replace tabs with spaces on source files
 		source_file_contents = source_file_contents.replace('\t', ' '*4)
 		# strip lines and remove empty lines
-		source_file_contents = '\n'.join(list(filter(lambda x: x.strip(), source_file_contents.split('\n'))))
+		source_file_contents = '\n'.join(list(filter(lambda x: x.strip() and not x[0] == '#', source_file_contents.split('\n'))))
 		source_files_contents[source_file.name] = source_file_contents
 	
 	# remove first commment lines on decompiled source files
@@ -208,11 +230,10 @@ def check_stdout_failed(source_file, decompiled_source_file_contents):
 			print_info('-', '%s %s' % (colored('Failed', LRED_COLOR), colored('(Different stdout)', LMAGENTA_COLOR)), source_file.name, max_align_need)
 			# putting a lot of prints so i can switch to .encode() easily
 			if debug:
-				print('-----------------')
-				print(source_files_contents[source_file.name])
-				print('=================')
-				print(decompiled_source_file_contents)
-				print('-----------------')
+				print('-----------DIFF-----------')
+				for diff_line in list(difflib.context_diff(source_files_contents[source_file.name].split('\n'), decompiled_source_file_contents.split('\n'), n=1))[3:]:
+					print(diff_line)
+				print('-----------DIFF------------')
 		return True
 	return False
 
@@ -268,67 +289,57 @@ def print_summary(version_to_decompiled_count, input_files_count):
 			('*', 'Partially passed', versions_partially_passed, YELLOW_COLOR),
 			('-', 'Failed', versions_failed, LRED_COLOR)]
 		for indicate_char, status, count, color in to_print_list:
-			print_info(indicate_char, status + ' (%d / %d)' % (count, versions_count), color=color)
+			if count:
+				print_info(indicate_char, status + ' (%d / %d)' % (count, versions_count), color=color)
 	else:
 		print_info('-', 'FAILED ALL', color=LRED_COLOR)
 
-def get_sys_args_and_kwargs():
-	kwargs = {}
-	args = []
-	if len(sys.argv) > 1:
-		for arg in sys.argv[1:]:
-			if '=' in arg:
-				key, value = arg.split('=', 1)
-				kwargs[key] = value
-			else:
-				args.append(arg)
-	return args, kwargs
+def get_args():
+	parser = argparse.ArgumentParser()
+	parser.add_argument('pycdc_path', help='e.g. "..\\Debug\\pycdc.exe"')
+	parser.add_argument('-e', '--expression', default='*', help='Expression for the test files. (e.g. "exceptions" or "exceptions*")')
+	parser.add_argument('-v', '--versions', nargs='*', default=[], help='Test specific version(s). (e.g. "310" or "39 310")')
+	parser.add_argument('-q', '--quiet', type=int, default=0, help='Specify quiet level (0-3). (e.g. "-q 3" or "-q 0")')
+	parser.add_argument('--debug', action='store_true', default=False, help='Print more information on fails/errors.')
+	parser.add_argument('--no-color', action='store_true', default=False, help='Disable colors on the terminal.')
+	args = parser.parse_args()
+	for version in args.versions:
+		if not version.isdigit():
+			parser.error('Version must consist only of digits. (e.g. "39")')
+		elif version[0] not in versions or version[1:] not in versions[version[0]]:
+			parser.error(f'Version "{version}" not supported. Supported versions are: {versions}')
+	if args.quiet < 0 or args.quiet > 3:
+		parser.error('quiet level must be between 0-3 (inclusive).')
+	if args.debug and args.quiet > 1:
+		parser.error('debug can only be when quiet level <= 1')
+	if args.pycdc_path:
+		if not Path(args.pycdc_path).exists():
+			parser.error(f'File "{args.pycdc_path}" not exists.')
+	return args
 
 def init_and_get_args():
-	versions = {
-		'3': ['0',
-		'1',
-		'2',
-		'3',
-		'4',
-		'5',
-		'6',
-		'7',
-		'8',
-		'9',
-		'10',
-		#'11'
-		]}
-	
+	global versions
 	global debug
 	debug = False
 	global quiet_level
 	quiet_level = 0
 	global with_color
 	with_color = True
-	old_str = ''
 	file_basename_exp = '*'
-	decompile_without_test = False
-	compile_without_test = False
-	args, kwargs = get_sys_args_and_kwargs()
-	for arg in args:
-		if arg == 'debug':
-			debug = True
-		elif arg == 'old':
-			old_str = '_old'
-		elif arg.count('q') == len(arg):
-			quiet_level = len(arg)
-		elif arg == 'noc':
-			with_color = False
-		elif arg.isdigit():
-			if arg[0] not in versions or arg[1:] not in versions[arg[0]]:
-				print_error_and_exit('[-] Version not supported')
+	
+	args = get_args()
+	file_basename_exp = args.expression
+	file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
+	if args.versions:
+		versions = {}
+		for version in args.versions:
+			if version[0] in versions:
+				versions[version[0]].add(version[1:])
 			else:
-				versions = {arg[0]: [arg[1:]]}
-	for arg_name, arg_value in kwargs.items():
-		if arg_name == 'exp':
-			file_basename_exp = arg_value
-			file_basename_exp = re.sub('[^*a-zA-Z0-9_-]', '', file_basename_exp)
+				versions[version[0]] = {version[1:]}
+	with_color = not args.no_color
+	quiet_level = args.quiet
+	debug = args.debug
 	
 	if with_color:
 		global colored
@@ -341,14 +352,13 @@ def init_and_get_args():
 				return str
 		just_fix_windows_console()
 	
-	pycdc_path = run_cmd('where pycdc%s' % old_str, True).split('\n')[0]
-	return file_basename_exp, pycdc_path, versions
+	return file_basename_exp, args.pycdc_path
 
 def main():
 	global max_align_need
 	global source_files_contents
 	
-	file_basename_exp, pycdc_path, versions = init_and_get_args()
+	file_basename_exp, pycdc_path = init_and_get_args()
 	
 	input_dir = Path('./input/')
 	input_dir_exp = str(input_dir / (file_basename_exp + '.py'))
@@ -363,9 +373,9 @@ def main():
 	source_files_contents = {}
 	
 	compiled_dir = Path('./compiled/')
-	compile(input_dir, compiled_dir, versions, file_basename_exp)
+	compile(input_dir, compiled_dir, file_basename_exp)
 	decompiled_dir = Path('./decompiled/')
-	decompile(compiled_dir, decompiled_dir, versions, file_basename_exp, pycdc_path)
+	decompile(compiled_dir, decompiled_dir, file_basename_exp, pycdc_path)
 	
 	version_to_decompiled_count = {}
 	
