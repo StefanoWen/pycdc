@@ -36,8 +36,7 @@ versions = {
 		'8',
 		'9',
 		'10',
-		'11',
-		'12'
+		'11'
 		]}
 
 def run_cmd(cmd, with_output=False, with_err=False):
@@ -334,9 +333,9 @@ def init_and_get_args():
 		versions = {}
 		for version in args.versions:
 			if version[0] in versions:
-				versions[version[0]].add(version[1:])
+				versions[version[0]].append(version[1:])
 			else:
-				versions[version[0]] = {version[1:]}
+				versions[version[0]] = [version[1:]]
 	with_color = not args.no_color
 	quiet_level = args.quiet
 	debug = args.debug
