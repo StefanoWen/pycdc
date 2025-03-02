@@ -360,8 +360,9 @@ def main():
 	file_basename_exp, pycdc_path = init_and_get_args()
 	
 	input_dir = Path('./input/')
-	input_dir_exp = str(input_dir / (file_basename_exp + '.py'))
-	input_files = glob.glob(input_dir_exp)
+	input_dir_exp = str(input_dir / '**' / (file_basename_exp + '.py'))
+	print(input_dir_exp)
+	input_files = glob.glob(input_dir_exp, recursive=True)#Path('./input/').rglob(input_dir_exp)
 	if not input_files:
 		print('No input files matched expression.')
 		return
