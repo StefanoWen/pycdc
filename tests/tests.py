@@ -298,6 +298,7 @@ def get_args():
 	parser.add_argument('pycdc_path', help='e.g. "..\\Debug\\pycdc.exe"')
 	parser.add_argument('-e', '--expression', default='*', help='Expression for the test files. (e.g. "exceptions" or "exceptions*")')
 	parser.add_argument('-v', '--versions', nargs='*', default=[], help='Test specific version(s). (e.g. "310" or "39 310")')
+	parser.add_argument('-d', '--dir', default='./input/', help='Input directory for the test files. (e.g. "./input/exceptions")')
 	parser.add_argument('-q', '--quiet', type=int, default=0, help='Specify quiet level (0-3). (e.g. "-q 3" or "-q 0")')
 	parser.add_argument('--debug', action='store_true', default=False, help='Print more information on fails/errors.')
 	parser.add_argument('--no-color', action='store_true', default=False, help='Disable colors on the terminal.')
@@ -307,24 +308,21 @@ def get_args():
 			parser.error('Version must consist only of digits. (e.g. "39")')
 		elif version[0] not in versions or version[1:] not in versions[version[0]]:
 			parser.error(f'Version "{version}" not supported. Supported versions are: {versions}')
+	if not Path(args.dir).exists():
+		parser.error(f'Input directory "{args.dir}" not exists.')
 	if args.quiet < 0 or args.quiet > 3:
 		parser.error('quiet level must be between 0-3 (inclusive).')
 	if args.debug and args.quiet > 1:
 		parser.error('debug can only be when quiet level <= 1')
-	if args.pycdc_path:
-		if not Path(args.pycdc_path).exists():
-			parser.error(f'File "{args.pycdc_path}" not exists.')
+	if not Path(args.pycdc_path).exists():
+		parser.error(f'File "{args.pycdc_path}" not exists.')
 	return args
 
 def init_and_get_args():
 	global versions
 	global debug
-	debug = False
 	global quiet_level
-	quiet_level = 0
 	global with_color
-	with_color = True
-	file_basename_exp = '*'
 	
 	args = get_args()
 	file_basename_exp = args.expression
@@ -351,15 +349,15 @@ def init_and_get_args():
 				return str
 		just_fix_windows_console()
 	
-	return file_basename_exp, args.pycdc_path
+	return file_basename_exp, args.pycdc_path, args.dir
 
 def main():
 	global max_align_need
 	global source_files_contents
 	
-	file_basename_exp, pycdc_path = init_and_get_args()
+	file_basename_exp, pycdc_path, input_dir = init_and_get_args()
 	
-	input_dir = Path('./input/')
+	input_dir = Path(input_dir)
 	input_dir_exp = str(input_dir / (file_basename_exp + '.py'))
 	input_files = glob.glob(input_dir_exp)
 	if not input_files:
