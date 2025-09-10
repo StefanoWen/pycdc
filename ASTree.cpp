@@ -2476,6 +2476,14 @@ PycRef<ASTNode> BuildFromCode(PycRef<PycCode> code, PycModule* mod)
         case Pyc::PUSH_NULL:
             stack.push(nullptr);
             break;
+        case Pyc::PUSH_EXC_INFO:
+            {
+                // PUSH_EXC_INFO pushes the exception info onto the stack
+                // This is used in Python 3.11+ for exception handling
+                // The exception info typically contains information about the current exception
+                stack.push(new ASTExceptionInfo());
+            }
+            break;
         case Pyc::GEN_START_A:
             stack.pop();
             break;
@@ -3313,29 +3321,37 @@ void print_src(PycRef<ASTNode> node, PycModule* mod, std::ostream& pyc_output)
             print_src(annotation, mod, pyc_output);
         }
         break;
-    case ASTNode::NODE_TERNARY:
-        {
-            /* parenthesis might be needed
-             * 
-             * when if-expr is part of numerical expression, ternary has the LOWEST precedence
-             *     print(a + b if False else c)
-             * output is c, not a+c (a+b is calculated first)
-             * 
-             * but, let's not add parenthesis - to keep the source as close to original as possible in most cases
-             */
-            PycRef<ASTTernary> ternary = node.cast<ASTTernary>();
-            //pyc_output << "(";
-            print_src(ternary->if_expr(), mod, pyc_output);
-            const auto if_block = ternary->if_block().cast<ASTCondBlock>();
-            pyc_output << " if ";
-            if (if_block->negative())
-                pyc_output << "not ";
-            print_src(if_block->cond(), mod, pyc_output);
-            pyc_output << " else ";
-            print_src(ternary->else_expr(), mod, pyc_output);
-            //pyc_output << ")";
-        }
-        break;
+        case ASTNode::NODE_TERNARY:
+            {
+                /* parenthesis might be needed
+                 * 
+                 * when if-expr is part of numerical expression, ternary has the LOWEST precedence
+                 *     print(a + b if False else c)
+                 * output is c, not a+c (a+b is calculated first)
+                 * 
+                 * but, let's not add parenthesis - to keep the source as close to original as possible in most cases
+                 */
+                PycRef<ASTTernary> ternary = node.cast<ASTTernary>();
+                //pyc_output << "(";
+                print_src(ternary->if_expr(), mod, pyc_output);
+                const auto if_block = ternary->if_block().cast<ASTCondBlock>();
+                pyc_output << " if ";
+                if (if_block->negative())
+                    pyc_output << "not ";
+                print_src(if_block->cond(), mod, pyc_output);
+                pyc_output << " else ";
+                print_src(ternary->else_expr(), mod, pyc_output);
+                //pyc_output << ")";
+            }
+            break;
+        case ASTNode::NODE_EXCEPTION_INFO:
+            {
+                // Exception info nodes represent internal exception handling state
+                // They don't produce any visible output in the decompiled code
+                // This is used internally by Python 3.11+ for exception handling
+                pyc_output << "<exception_info>";
+            }
+            break;
     default:
         pyc_output << "<NODE:" << node->type() << ">";
         fprintf(stderr, "Unsupported Node type: %d\n", node->type());

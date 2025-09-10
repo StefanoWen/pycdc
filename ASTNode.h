@@ -22,6 +22,7 @@ public:
 
         // Empty node types
         NODE_LOCALS,
+        NODE_EXCEPTION_INFO,
     };
 
     ASTNode(int type = NODE_INVALID) : m_refs(), m_type(type), m_processed() { }
@@ -753,6 +754,11 @@ private:
     PycRef<ASTNode> m_if_block; // contains "condition" and "negative"
     PycRef<ASTNode> m_if_expr;
     PycRef<ASTNode> m_else_expr;
+};
+
+class ASTExceptionInfo : public ASTNode {
+public:
+    ASTExceptionInfo() : ASTNode(NODE_EXCEPTION_INFO) { }
 };
 
 #endif
