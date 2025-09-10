@@ -1,14 +1,28 @@
 name: MSVC-CI
+
 on:
   push:
     branches: [master]
   pull_request:
+  workflow_dispatch: # 添加手动触发事件 :cite[1]:cite[3]:cite[5]
+    inputs: # 可选：添加输入参数
+      branch:
+        description: '要构建的分支'
+        required: false
+        default: 'master'
+        type: string
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4 # 更新到较新版本
+        with:
+          # 使用三元表达式处理分支选择 :cite[4]
+          # 如果是手动触发且提供了分支输入，则使用输入的分支；否则使用触发事件的分支
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch != '' && inputs.branch || github.ref }}
+
       - name: Configure and Build
         run: |
           mkdir build
@@ -23,7 +37,7 @@ jobs:
           cmake --build build --config Release --target check
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pycdc-release
           path: build\Release\*.exe
